@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "reactflow/dist/style.css";
 
 :root {
   --paper: #F5F2EA;
@@ -136,6 +137,138 @@ input:focus, select:focus, textarea:focus {
   border: 2px solid var(--ink);
 }
 
+/* React Flow styling overrides */
+.react-flow__background {
+  background-color: var(--canvas-bg) !important;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border) !important;
+  background: var(--paper) !important;
+  box-shadow: none !important;
+}
+
+.react-flow__controls-button {
+  border-bottom: 1px solid var(--border) !important;
+  background: var(--paper) !important;
+  fill: var(--ink) !important;
+  color: var(--ink) !important;
+  border-radius: 0 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--accent) !important;
+  fill: #11100F !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--edge) !important;
+  stroke-width: 1.5 !important;
+}
+
+.react-flow__edge.highlighted .react-flow__edge-path {
+  stroke: var(--accent) !important;
+  stroke-width: 3 !important;
+  stroke-dasharray: 6 3 !important;
+  animation: flowAnimation 1s linear infinite !important;
+}
+
+@keyframes flowAnimation {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Mobile & Touch Responsiveness */
+@media (max-width: 767px) {
+  button {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .react-flow__controls-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* Mobile Drawers & Sheets */
+.mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+  z-index: 120;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-drawer-left {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(340px, 86vw);
+  background: var(--paper);
+  border-right: 2px solid var(--border);
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  animation: slideInLeft 0.22s ease-out;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.mobile-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 82vh;
+  max-height: 82dvh;
+  background: var(--paper);
+  border-top: 2px solid var(--border);
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  animation: slideInUp 0.22s ease-out;
+  padding-bottom: var(--sab);
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.mobile-fullscreen-sheet {
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  z-index: 140;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.18s ease-out;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Hero Form Container */
 .hero-form-container {
   display: flex;
@@ -169,7 +302,36 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-.touch-pan-y {
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+/* Indeterminate progress bar */
+@keyframes indeterminate-bar {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -35%;
+  }
+  100% {
+    left: 100%;
+    right: -35%;
+  }
+}
+
+.indeterminate-bar {
+  position: relative;
+  overflow: hidden;
+  height: 3px;
+  background-color: var(--border);
+  width: 100%;
+}
+
+.indeterminate-bar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background-color: var(--accent);
+  animation: indeterminate-bar 1.8s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
 }

@@ -1,0 +1,268 @@
+import type {
+  AnalysisJob,
+  AskResponse,
+  CodeFile,
+  CodeSymbol,
+  ExtractedImport,
+  GraphData,
+  ModelOption,
+  SearchResult,
+} from "@/types";
+
+const API_BASE = "";
+
+export async function analyzeRepository(url: string): Promise<{ jobId: string; status: string }> {
+  const res = await fetch(`${API_BASE}/api/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Analysis failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function pollJobStatus(jobId: string): Promise<AnalysisJob> {
+  const res = await fetch(`${API_BASE}/api/analyze/${jobId}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Polling failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchGraph(repositoryId: string): Promise<GraphData> {
+  const res = await fetch(`${API_BASE}/api/graph/${repositoryId}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Failed to fetch graph (${res.status})`);
+  }
+  return res.json();
+}
+
+export interface FileDetailsResponse {
+  file: CodeFile;
+  symbols: CodeSymbol[];
+  exports: string[];
+  imports: ExtractedImport[];
+}
+
+export async function fetchFileDetails(
+  repositoryId: string,
+  filePath: string
+): Promise<FileDetailsResponse> {
+  const url = `${API_BASE}/api/repository/${repositoryId}/file?path=${encodeURIComponent(filePath)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Failed to fetch file (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function searchRepo(
+  repositoryId: string,
+  query: string
+): Promise<SearchResult[]> {
+  const res = await fetch(`${API_BASE}/api/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repositoryId, query }),
+  });
+  if (!res.ok) {
+    return [];
+  }
+  const data = await res.json();
+  return data.results || [];
+}
+
+export async function fetchTraceFlow(
+  repositoryId: string,
+  startNodeId: string,
+  endNodeId: string
+): Promise<{
+  found: boolean;
+  nodePath: string[];
+  edgePath: string[];
+  readableSteps: string[];
+}> {
+  const res = await fetch(`${API_BASE}/api/trace`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repositoryId, startNodeId, endNodeId }),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to calculate trace flow");
+  }
+  return res.json();
+}
+
+export async function askCodeAtlas(
+  repositoryId: string,
+  question: string,
+  options?: "free" | "paid" | { mode?: "free" | "paid"; model?: string }
+): Promise<AskResponse> {
+  const mode = typeof options === "string" ? options : options?.mode || "free";
+  const model = typeof options === "object" ? options.model : undefined;
+  const res = await fetch(`${API_BASE}/api/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repositoryId, question, mode, model }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to process question");
+  }
+  return res.json();
+}
+
+export async function askCodeAtlasStream(
+  repositoryId: string,
+  question: string,
+  options: {
+    mode?: "free" | "paid";
+    model?: string;
+    onToken: (token: string) => void;
+  }
+): Promise<AskResponse> {
+  const mode = options.mode || "free";
+  const model = options.model;
+  const res = await fetch(`${API_BASE}/api/ask`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    },
+    body: JSON.stringify({ repositoryId, question, mode, model, stream: true }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Failed to process question (${res.status})`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("Streaming not supported by browser environment");
+  }
+
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  let finalResponse: AskResponse | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() || "";
+
+    for (const evt of events) {
+      const trimmed = evt.trim();
+      if (!trimmed) continue;
+
+      let eventType = "message";
+      let dataStr = "";
+
+      for (const line of trimmed.split("\n")) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          dataStr = line.slice(6).trim();
+        }
+      }
+
+      if (dataStr) {
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (eventType === "token" || (parsed && parsed.token !== undefined)) {
+            options.onToken(parsed.token);
+          } else if (eventType === "done" || (parsed && parsed.answer !== undefined)) {
+            finalResponse = parsed;
+          } else if (eventType === "error") {
+            throw new Error(parsed.error || "Streaming error occurred");
+          }
+        } catch (e: any) {
+          if (eventType === "error") throw e;
+        }
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    const trimmed = buffer.trim();
+    let eventType = "message";
+    let dataStr = "";
+    for (const line of trimmed.split("\n")) {
+      if (line.startsWith("event: ")) {
+        eventType = line.slice(7).trim();
+      } else if (line.startsWith("data: ")) {
+        dataStr = line.slice(6).trim();
+      }
+    }
+    if (dataStr) {
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (eventType === "done" || (parsed && parsed.answer !== undefined)) {
+          finalResponse = parsed;
+        }
+      } catch {}
+    }
+  }
+
+  if (!finalResponse) {
+    throw new Error("Streaming ended unexpectedly before completion.");
+  }
+
+  return finalResponse;
+}
+
+export async function fetchAvailableModels(): Promise<{
+  models: ModelOption[];
+  defaultFree: string;
+  defaultPaid: string;
+  provider: string;
+  hasApiKey: boolean;
+}> {
+  const res = await fetch(`${API_BASE}/api/models`);
+  if (!res.ok) {
+    return {
+      models: [],
+      defaultFree: "nvidia/nemotron-3-ultra-550b-a55b:free",
+      defaultPaid: "google/gemini-3.8-flash",
+      provider: "synthesizer",
+      hasApiKey: false,
+    };
+  }
+  return res.json();
+}
+
+export async function fetchAuthStatus(): Promise<{
+  authenticated: boolean;
+  user: any | null;
+  oauthConfigured: boolean;
+}> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/user`);
+    if (!res.ok) return { authenticated: false, user: null, oauthConfigured: false };
+    return res.json();
+  } catch {
+    return { authenticated: false, user: null, oauthConfigured: false };
+  }
+}
+
+export async function logoutAuthUser(): Promise<void> {
+  await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+}
+
+export async function fetchUserRepos(): Promise<any[]> {
+  const res = await fetch(`${API_BASE}/api/auth/repos`);
+  if (!res.ok) {
+    throw new Error(`Failed to load repositories (${res.status})`);
+  }
+  const data = await res.json();
+  return data.repos || [];
+}
+

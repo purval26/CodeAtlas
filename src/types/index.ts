@@ -125,4 +125,88 @@ export interface AuthStatusResponse {
   oauthConfigured: boolean;
 }
 
+export interface ExtractedImport {
+  specifier: string;
+  names: string[];
+  line: number;
+  type: "import" | "require" | "dynamic-import";
+  isTypeOnly: boolean;
+}
+
+export interface SearchResult {
+  fileId: string;
+  filePath: string;
+  matchType: "symbol" | "file" | "content";
+  symbolName?: string;
+  symbolKind?: string;
+  line: number;
+  snippet: string;
+}
+
+export interface AskResponse {
+  answer: string;
+  verifiedCitations: SourceReference[];
+  insufficientEvidence?: boolean;
+  modelUsed?: string;
+  mode?: "free" | "paid";
+}
+
+export interface ModelOption {
+  id: string;
+  name: string;
+  mode: "free" | "paid";
+  description: string;
+  context?: string;
+  supportsReasoning?: boolean;
+}
+
+export const AVAILABLE_MODELS: ModelOption[] = [
+  {
+    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    name: "NVIDIA Nemotron 3 Ultra 550B",
+    mode: "free",
+    description: "Massive 550B MoE model for deep architectural reasoning & large context",
+    context: "1M tokens",
+  },
+  {
+    id: "qwen/qwen-2.5-coder-32b-instruct:free",
+    name: "Qwen 2.5 Coder 32B",
+    mode: "free",
+    description: "State-of-the-art open coding specialist for AST & syntax comprehension",
+    context: "128k tokens",
+  },
+  {
+    id: "google/gemini-2.0-flash-exp:free",
+    name: "Gemini 2.0 Flash Exp",
+    mode: "free",
+    description: "Ultra-fast low-latency code understanding with generous throughput",
+    context: "1M tokens",
+  },
+  {
+    id: "nvidia/nemotron-3.5-lightning:free",
+    name: "NVIDIA Nemotron 3.5 Lightning",
+    mode: "free",
+    description: "Fast 30B MoE high-throughput reasoning and architectural analysis",
+    context: "256k tokens",
+  },
+  {
+    id: "google/gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    mode: "paid",
+    description: "Deep thinking model with question-adaptive reasoning effort & grounded verification",
+    context: "1M tokens",
+    supportsReasoning: true,
+  },
+];
+
+export interface AskedQuestionSessionItem {
+  id: string;
+  question: string;
+  response: AskResponse;
+  timestamp: string;
+  model: string;
+  mode: "free" | "paid";
+}
+
+
 
