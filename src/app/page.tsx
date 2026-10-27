@@ -352,7 +352,7 @@ export default function Home() {
                     selectedNode={selectedNode}
                     graphData={graphData}
                     onSelectNode={(id) => setSelectedNodeId(id)}
-                    onOpenSource={(path) => handleOpenSource(path)}
+                    onOpenSource={(path, lineRange) => handleOpenSource(path, lineRange)}
                     onStartTrace={(id) => {
                       setTraceStartId(id);
                       setIsTraceOpen(true);
@@ -441,7 +441,7 @@ export default function Home() {
                         selectedNode={selectedNode}
                         graphData={graphData}
                         onSelectNode={(id) => setSelectedNodeId(id)}
-                        onOpenSource={(path) => handleOpenSource(path)}
+                        onOpenSource={(path, lineRange) => handleOpenSource(path, lineRange)}
                         onStartTrace={(id) => {
                           setTraceStartId(id);
                           setIsTraceOpen(true);
@@ -683,9 +683,9 @@ export default function Home() {
                           selectedNode={selectedNode}
                           graphData={graphData}
                           onSelectNode={(id) => setSelectedNodeId(id)}
-                          onOpenSource={(path) => {
+                          onOpenSource={(path, lineRange) => {
                             setIsMobileInspectorOpen(false);
-                            handleOpenSource(path);
+                            handleOpenSource(path, lineRange);
                           }}
                           onStartTrace={(id) => {
                             setTraceStartId(id);

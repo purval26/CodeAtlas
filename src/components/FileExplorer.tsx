@@ -153,6 +153,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               userSelect: "none",
               borderBottom: "1px solid rgba(0,0,0,0.03)",
               outline: "none",
+              transition: "background 0.12s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (item.nodeId !== selectedNodeId) {
+                e.currentTarget.style.background = "var(--hover-bg)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (item.nodeId !== selectedNodeId) {
+                e.currentTarget.style.background = "transparent";
+              }
             }}
           >
             {item.isDir ? (

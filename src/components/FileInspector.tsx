@@ -7,7 +7,7 @@ interface FileInspectorProps {
   selectedNode: GraphNode | null;
   graphData: GraphData;
   onSelectNode: (nodeId: string) => void;
-  onOpenSource: (filePath: string) => void;
+  onOpenSource: (filePath: string, targetLineRange?: { startLine: number; endLine: number }) => void;
   onStartTrace?: (nodeId: string) => void;
   onEndTrace?: (nodeId: string) => void;
   onClose?: () => void;
@@ -276,6 +276,15 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
                     cursor: "pointer",
                     border: "1px solid var(--border)",
                     background: "var(--paper)",
+                    transition: "background 0.12s ease, border-color 0.12s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--hover-bg)";
+                    e.currentTarget.style.borderColor = "var(--ink)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "var(--paper)";
+                    e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
                   {dep.type === "package" ? <Package size={12} /> : <FileText size={12} />}
@@ -324,6 +333,15 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
                     cursor: "pointer",
                     border: "1px solid var(--border)",
                     background: "var(--paper)",
+                    transition: "background 0.12s ease, border-color 0.12s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--hover-bg)";
+                    e.currentTarget.style.borderColor = "var(--ink)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "var(--paper)";
+                    e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
                   <ArrowLeft size={11} style={{ opacity: 0.5 }} />
@@ -336,7 +354,7 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
           )}
         </div>
 
-        {/* Symbols */}
+        {/* Symbols (Clickable to jump directly to line numbers in CodeViewer) */}
         {selectedNode.symbols && selectedNode.symbols.length > 0 && (
           <div>
             <div
@@ -355,23 +373,50 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
               {selectedNode.symbols.map((sym) => (
                 <div
                   key={sym.id}
+                  onClick={() => {
+                    if (selectedNode.path) {
+                      onOpenSource(selectedNode.path, { startLine: sym.startLine, endLine: sym.endLine });
+                    }
+                  }}
                   className="font-mono"
+                  title={`Click to inspect ${sym.name} (L${sym.startLine}–L${sym.endLine}) in source`}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
+                    alignItems: "center",
                     padding: "6px 8px",
                     fontSize: "11px",
-                    minHeight: "28px",
-                    border: "1px solid rgba(0,0,0,0.06)",
+                    minHeight: "30px",
+                    border: "1px solid var(--border)",
                     background: "var(--paper)",
+                    cursor: "pointer",
+                    transition: "background 0.12s ease, border-color 0.12s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--hover-bg)";
+                    e.currentTarget.style.borderColor = "var(--ink)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "var(--paper)";
+                    e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <strong style={{ color: "var(--muted)" }}>{sym.kind.slice(0, 3)} </strong>
                     {sym.name}
                   </span>
-                  <span style={{ color: "var(--muted)", flexShrink: 0, marginLeft: "8px" }}>
-                    L{sym.startLine}–L{sym.endLine}
+                  <span
+                    style={{
+                      color: "var(--muted)",
+                      flexShrink: 0,
+                      marginLeft: "8px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <span>L{sym.startLine}–L{sym.endLine}</span>
+                    <ArrowRight size={10} style={{ opacity: 0.6 }} />
                   </span>
                 </div>
               ))}
