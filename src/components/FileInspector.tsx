@@ -1,15 +1,15 @@
 "use client";
 import React from "react";
 import { GraphData, GraphNode } from "@/types";
-import { FileText, ArrowRight, ArrowLeft, Code2, GitFork, Package, X } from "lucide-react";
+import { FileText, ArrowRight, ArrowLeft, Code2, Package, X } from "lucide-react";
 
 interface FileInspectorProps {
   selectedNode: GraphNode | null;
   graphData: GraphData;
   onSelectNode: (nodeId: string) => void;
   onOpenSource: (filePath: string) => void;
-  onStartTrace: (nodeId: string) => void;
-  onEndTrace: (nodeId: string) => void;
+  onStartTrace?: (nodeId: string) => void;
+  onEndTrace?: (nodeId: string) => void;
   onClose?: () => void;
   isMobileSheet?: boolean;
 }
@@ -19,8 +19,6 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
   graphData,
   onSelectNode,
   onOpenSource,
-  onStartTrace,
-  onEndTrace,
   onClose,
   isMobileSheet = false,
 }) => {
@@ -150,34 +148,18 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
         )}
 
         {/* Action buttons */}
-        <div style={{ marginTop: "14px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {selectedNode.path && (
+        {selectedNode.path && (
+          <div style={{ marginTop: "14px", display: "flex", gap: "8px" }}>
             <button
               onClick={() => onOpenSource(selectedNode.path!)}
               className="btn-primary"
-              style={{ fontSize: "11px", padding: "6px 12px", minHeight: "34px" }}
+              style={{ fontSize: "11px", padding: "6px 14px", minHeight: "34px", width: "100%" }}
             >
               <FileText size={13} />
               <span>VIEW SOURCE</span>
             </button>
-          )}
-
-          <button
-            onClick={() => onStartTrace(selectedNode.id)}
-            style={{ fontSize: "11px", padding: "6px 10px", minHeight: "34px" }}
-            title="Start trace from this node"
-          >
-            <GitFork size={13} />
-            <span>TRACE FROM</span>
-          </button>
-          <button
-            onClick={() => onEndTrace(selectedNode.id)}
-            style={{ fontSize: "11px", padding: "6px 10px", minHeight: "34px" }}
-            title="Trace flow to this node"
-          >
-            <span>TO HERE</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
