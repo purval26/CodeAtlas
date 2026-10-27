@@ -337,17 +337,34 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ReactFlow edge pointer-events fix to prevent mouseenter/mouseleave hover flicker */
+svg.react-flow__edges,
+.react-flow__edges,
+.react-flow__edges *,
 .react-flow__edge,
+.react-flow__edge *,
 .react-flow__edge-path,
 .react-flow__edge-text,
 .react-flow__connection-path,
-.react-flow__edges g,
-.react-flow__edges svg,
-.react-flow__edges path,
-.react-flow__edge-interaction {
+.react-flow__arrowhead,
+marker,
+marker * {
+  pointer-events: none !important;
+}
+
+.react-flow__handle {
   pointer-events: none !important;
 }
 
 .react-flow__node {
   pointer-events: auto !important;
+  z-index: 50 !important;
+}
+
+.react-flow__node:hover,
+.react-flow__node.hovered {
+  z-index: 60 !important;
+}
+
+.react-flow__node.selected {
+  z-index: 100 !important;
 }

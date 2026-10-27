@@ -112,6 +112,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
           height: 6,
           top: "50%",
           transform: "translateY(-50%)",
+          pointerEvents: "none",
         }}
       />
       <Handle
@@ -123,6 +124,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
           height: 6,
           top: "50%",
           transform: "translateY(-50%)",
+          pointerEvents: "none",
         }}
       />
 
@@ -141,6 +143,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
             padding: "2px 6px",
             border: "1px solid var(--accent)",
             zIndex: 10,
+            pointerEvents: "none",
           }}
         >
           STEP #{traceStep}
@@ -162,6 +165,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
             padding: "1px 5px",
             border: "1px solid var(--ink)",
             zIndex: 5,
+            pointerEvents: "none",
           }}
         >
           IMPORTS →
@@ -182,6 +186,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
             padding: "1px 5px",
             border: "1px solid var(--border)",
             zIndex: 5,
+            pointerEvents: "none",
           }}
         >
           ← DEPENDS
@@ -199,6 +204,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            pointerEvents: "none",
           }}
         >
           {dirName}
@@ -206,8 +212,8 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
       )}
 
       {/* File label */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-        <FileCode size={13} style={{ flexShrink: 0 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", pointerEvents: "none" }}>
+        <FileCode size={13} style={{ flexShrink: 0, pointerEvents: "none" }} />
         <div
           style={{
             fontWeight: 700,
@@ -215,6 +221,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            pointerEvents: "none",
           }}
           title={data.label}
         >
@@ -231,6 +238,7 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          pointerEvents: "none",
         }}
       >
         <span>{data.lineCount !== undefined ? `${data.lineCount} L` : ""}</span>
@@ -288,6 +296,7 @@ const PackageNodeComponent = ({ data, selected }: NodeProps) => {
           height: 6,
           top: "50%",
           transform: "translateY(-50%)",
+          pointerEvents: "none",
         }}
       />
       <Handle
@@ -299,16 +308,18 @@ const PackageNodeComponent = ({ data, selected }: NodeProps) => {
           height: 6,
           top: "50%",
           transform: "translateY(-50%)",
+          pointerEvents: "none",
         }}
       />
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", width: "100%", overflow: "hidden" }}>
-        <Package size={12} style={{ color: "var(--muted)", flexShrink: 0 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", width: "100%", overflow: "hidden", pointerEvents: "none" }}>
+        <Package size={12} style={{ color: "var(--muted)", flexShrink: 0, pointerEvents: "none" }} />
         <span
           style={{
             fontWeight: 600,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            pointerEvents: "none",
           }}
           title={data.label}
         >
@@ -505,6 +516,32 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   });
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleNodeMouseEnter = useCallback((_: any, node: Node) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredNodeId((curr) => (curr === node.id ? curr : node.id));
+  }, []);
+
+  const handleNodeMouseLeave = useCallback((_: any, node: Node) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredNodeId((curr) => (curr === node.id ? null : curr));
+    }, 60);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSelectLayout = (mode: GraphLayoutMode) => {
     setLayoutMode(mode);
@@ -824,7 +861,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         },
         animated,
         className: isTraceEdge ? "highlighted" : "",
-        zIndex: isTraceEdge ? 100 : isConnectedToSelected || isConnectedToHovered ? 20 : 1,
+        zIndex: isTraceEdge ? 10 : isConnectedToSelected || isConnectedToHovered ? 5 : 1,
         markerEnd: showMarker
           ? {
               type: MarkerType.ArrowClosed,
@@ -879,12 +916,8 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
-        onNodeMouseEnter={(_: any, node: Node) => {
-          setHoveredNodeId((curr) => (curr === node.id ? curr : node.id));
-        }}
-        onNodeMouseLeave={(_: any, node: Node) => {
-          setHoveredNodeId((curr) => (curr === node.id ? null : curr));
-        }}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
         onInit={handleInit}
         defaultViewport={defaultViewport}
         fitView={false}
