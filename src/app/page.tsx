@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { LandingHero, GOLDEN_DEMO_REPO_URL } from "@/components/LandingHero";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
@@ -709,76 +710,84 @@ export default function Home() {
         </main>
 
         {/* Code Viewer Modal */}
-        {activeFile && (
-          <CodeViewer
-            file={activeFile.file}
-            symbols={activeFile.symbols}
-            targetLineRange={activeFile.targetLineRange}
-            onClose={() => setActiveFile(null)}
-            onNavigateToFile={(targetPath) => handleOpenSource(targetPath)}
-            knownFilePaths={
-              graphData?.nodes
-                .filter((n) => n.type === "file" && n.path)
-                .map((n) => n.path!) || []
-            }
-          />
-        )}
+        <AnimatePresence>
+          {activeFile && (
+            <CodeViewer
+              file={activeFile.file}
+              symbols={activeFile.symbols}
+              targetLineRange={activeFile.targetLineRange}
+              onClose={() => setActiveFile(null)}
+              onNavigateToFile={(targetPath) => handleOpenSource(targetPath)}
+              knownFilePaths={
+                graphData?.nodes
+                  .filter((n) => n.type === "file" && n.path)
+                  .map((n) => n.path!) || []
+              }
+            />
+          )}
+        </AnimatePresence>
 
         {/* Ask CodeAtlas Modal */}
-        {isAskOpen && graphData && (
-          <AskCodeAtlas
-            repositoryId={graphData.repository.id}
-            onOpenSourceRange={handleOpenCitation}
-            onTriggerTrace={(startPath?: string, endPath?: string) => {
-              setIsAskOpen(false);
-              if (startPath) {
-                const sNode = graphData.nodes.find(
-                  (n) => n.path === startPath || n.id.endsWith(`:${startPath}`)
-                );
-                if (sNode) setTraceStartId(sNode.id);
-              } else {
-                setTraceStartId(selectedNodeId);
-              }
-              if (endPath && endPath !== startPath) {
-                const eNode = graphData.nodes.find(
-                  (n) => n.path === endPath || n.id.endsWith(`:${endPath}`)
-                );
-                if (eNode) setTraceEndId(eNode.id);
-              } else {
-                setTraceEndId(null);
-              }
-              setIsTraceOpen(true);
-            }}
-            onClose={() => setIsAskOpen(false)}
-            sessionHistory={sessionAskedQuestions}
-            onUpdateSessionHistory={setSessionAskedQuestions}
-            activeQuestionId={activeSessionQuestionId}
-            onSetActiveQuestionId={setActiveSessionQuestionId}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-          />
-        )}
+        <AnimatePresence>
+          {isAskOpen && graphData && (
+            <AskCodeAtlas
+              repositoryId={graphData.repository.id}
+              onOpenSourceRange={handleOpenCitation}
+              onTriggerTrace={(startPath?: string, endPath?: string) => {
+                setIsAskOpen(false);
+                if (startPath) {
+                  const sNode = graphData.nodes.find(
+                    (n) => n.path === startPath || n.id.endsWith(`:${startPath}`)
+                  );
+                  if (sNode) setTraceStartId(sNode.id);
+                } else {
+                  setTraceStartId(selectedNodeId);
+                }
+                if (endPath && endPath !== startPath) {
+                  const eNode = graphData.nodes.find(
+                    (n) => n.path === endPath || n.id.endsWith(`:${endPath}`)
+                  );
+                  if (eNode) setTraceEndId(eNode.id);
+                } else {
+                  setTraceEndId(null);
+                }
+                setIsTraceOpen(true);
+              }}
+              onClose={() => setIsAskOpen(false)}
+              sessionHistory={sessionAskedQuestions}
+              onUpdateSessionHistory={setSessionAskedQuestions}
+              activeQuestionId={activeSessionQuestionId}
+              onSetActiveQuestionId={setActiveSessionQuestionId}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Trace Flow Modal */}
-        {isTraceOpen && graphData && (
-          <TraceFlowModal
-            graphData={graphData}
-            initialStartNodeId={traceStartId || selectedNodeId}
-            initialEndNodeId={traceEndId}
-            onApplyTrace={(nodeIds, edgeIds) => {
-              setTracePathNodeIds(nodeIds);
-              setTracePathEdgeIds(edgeIds);
-            }}
-            onClose={() => {
-              setIsTraceOpen(false);
-              setTraceEndId(null);
-            }}
-          />
-        )}
+        <AnimatePresence>
+          {isTraceOpen && graphData && (
+            <TraceFlowModal
+              graphData={graphData}
+              initialStartNodeId={traceStartId || selectedNodeId}
+              initialEndNodeId={traceEndId}
+              onApplyTrace={(nodeIds, edgeIds) => {
+                setTracePathNodeIds(nodeIds);
+                setTracePathEdgeIds(edgeIds);
+              }}
+              onClose={() => {
+                setIsTraceOpen(false);
+                setTraceEndId(null);
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Settings Modal */}
-        {isSettingsOpen && (
-          <SettingsModal onClose={() => setIsSettingsOpen(false)} />
-        )}
+        <AnimatePresence>
+          {isSettingsOpen && (
+            <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+          )}
+        </AnimatePresence>
       </div>
     </ErrorBoundary>
   );

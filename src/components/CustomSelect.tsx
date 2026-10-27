@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface CustomSelectOption<T extends string = string> {
   value: T;
@@ -112,87 +113,94 @@ export function CustomSelect<T extends string = string>({
         />
       </button>
 
-      {isOpen && (
-        <div
-          role="listbox"
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            right: 0,
-            zIndex: 100,
-            background: "var(--white)",
-            border: "1.5px solid var(--ink)",
-            boxShadow: "3px 3px 0px rgba(0, 0, 0, 0.18)",
-            padding: "3px",
-            minWidth: "148px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "2px",
-            ...dropdownStyle,
-          }}
-        >
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className="font-mono"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "8px",
-                  background: isSelected ? "var(--accent)" : "transparent",
-                  color: isSelected
-                    ? "#11100F"
-                    : dropdownStyle?.color || "var(--ink)",
-                  border: "none",
-                  padding: "5px 8px",
-                  fontSize: "11px",
-                  fontWeight: isSelected ? 800 : 500,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  width: "100%",
-                  transition: "background 0.12s ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = "var(--hover-bg)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = "transparent";
-                  }
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                  <span>{option.label}</span>
-                  {option.description && (
-                    <span
-                      style={{
-                        fontSize: "9px",
-                        color: isSelected ? "#333" : "var(--muted)",
-                        fontWeight: 400,
-                      }}
-                    >
-                      {option.description}
-                    </span>
-                  )}
-                </div>
-                {isSelected && <Check size={12} style={{ flexShrink: 0 }} />}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] as const }}
+            role="listbox"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              right: 0,
+              zIndex: 100,
+              background: "var(--white)",
+              border: "1.5px solid var(--ink)",
+              boxShadow: "3px 3px 0px rgba(0, 0, 0, 0.18)",
+              padding: "3px",
+              minWidth: "148px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "2px",
+              transformOrigin: "top right",
+              ...dropdownStyle,
+            }}
+          >
+            {options.map((option) => {
+              const isSelected = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className="font-mono"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "8px",
+                    background: isSelected ? "var(--accent)" : "transparent",
+                    color: isSelected
+                      ? "#11100F"
+                      : dropdownStyle?.color || "var(--ink)",
+                    border: "none",
+                    padding: "5px 8px",
+                    fontSize: "11px",
+                    fontWeight: isSelected ? 800 : 500,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    width: "100%",
+                    transition: "background 0.12s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.background = "var(--hover-bg)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.background = "transparent";
+                    }
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                    <span>{option.label}</span>
+                    {option.description && (
+                      <span
+                        style={{
+                          fontSize: "9px",
+                          color: isSelected ? "#333" : "var(--muted)",
+                          fontWeight: 400,
+                        }}
+                      >
+                        {option.description}
+                      </span>
+                    )}
+                  </div>
+                  {isSelected && <Check size={12} style={{ flexShrink: 0 }} />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { AskResponse, AskedQuestionSessionItem } from "@/types";
 import { askCodeAtlas, askCodeAtlasStream, fetchAvailableModels } from "@/utils/api";
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -326,7 +327,11 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
   const hasActiveConversation = Boolean(submittedQuestion || response || loading || error);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
       role="dialog"
       aria-label="Ask CodeAtlas Intelligence"
       aria-modal="true"
@@ -350,7 +355,11 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
         }
       }}
     >
-      <div
+      <motion.div
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 24, opacity: 0 }}
+        transition={{ type: "spring", damping: 32, stiffness: 400 }}
         style={{
           width: "min(960px, 100%)",
           maxHeight: "min(82vh, 660px)",
@@ -362,7 +371,6 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
           flexDirection: "column",
           boxShadow: "0 -10px 40px rgba(0,0,0,0.28)",
           position: "relative",
-          animation: "slideInUp 0.18s ease-out",
           overflow: "hidden",
         }}
       >
@@ -1308,7 +1316,7 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
             <span>ENTER TO SEND · SHIFT+ENTER FOR NEWLINE</span>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

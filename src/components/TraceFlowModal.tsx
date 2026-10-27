@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { GraphData } from "@/types";
 import { fetchTraceFlow } from "@/utils/api";
 import { X, GitFork, ArrowRight, CheckCircle, AlertCircle, Compass } from "lucide-react";
@@ -98,7 +99,11 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
   const fileNodes = graphData.nodes.filter((n) => n.type === "file");
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
       role="dialog"
       aria-label="Trace Dependency Flow"
       aria-modal="true"
@@ -121,7 +126,11 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
         }
       }}
     >
-      <div
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.97, opacity: 0, y: 8 }}
+        transition={{ type: "spring", damping: 32, stiffness: 420 }}
         style={{
           width: "100%",
           maxWidth: "620px",
@@ -372,7 +381,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

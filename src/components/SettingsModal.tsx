@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   X,
   Sliders,
@@ -219,7 +220,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   ];
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
       role="dialog"
       aria-modal="true"
       aria-label="CodeAtlas Settings"
@@ -238,7 +243,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.97, opacity: 0, y: 8 }}
+        transition={{ type: "spring", damping: 32, stiffness: 420 }}
         className="settings-modal-card"
         style={{
           background: "var(--paper)",
@@ -1460,7 +1469,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span>DONE</span>
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

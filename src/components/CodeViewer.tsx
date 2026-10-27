@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { CodeFile, CodeSymbol } from "@/types";
 import {
   X,
@@ -239,7 +240,11 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   };
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
       role="dialog"
       aria-label={`Code Viewer: ${file.path}`}
       aria-modal="true"
@@ -260,7 +265,11 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
         }
       }}
     >
-      <div
+      <motion.div
+        initial={{ x: 40, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 40, opacity: 0 }}
+        transition={{ type: "spring", damping: 32, stiffness: 380 }}
         style={{
           width: "min(1020px, 100vw)",
           height: "100%",
@@ -950,7 +959,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             <span style={{ fontWeight: 700 }}>{activeTheme.name.split(" ")[0]}</span>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

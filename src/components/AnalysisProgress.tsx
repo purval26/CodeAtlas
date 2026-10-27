@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { AnalysisJob } from "@/types";
 import { RefreshCw } from "lucide-react";
 
@@ -38,13 +39,17 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
         overflowY: "auto",
       }}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] as const }}
         style={{
           maxWidth: "580px",
           width: "100%",
           border: "2px solid var(--border)",
           background: "var(--white)",
           padding: "36px",
+          boxShadow: "4px 4px 0px rgba(0,0,0,0.12)",
         }}
       >
         <div
@@ -80,14 +85,16 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
             background: "var(--paper)",
             marginBottom: "32px",
             position: "relative",
+            overflow: "hidden",
           }}
         >
-          <div
+          <motion.div
+            initial={{ width: "5%" }}
+            animate={{ width: `${Math.min(100, Math.max(5, job.progress))}%` }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
             style={{
-              width: `${Math.min(100, Math.max(5, job.progress))}%`,
               height: "100%",
               background: "var(--accent)",
-              transition: "width 0.3s ease",
             }}
           />
         </div>
@@ -127,7 +134,15 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
                 <span>{stage.label}</span>
                 <span style={{ fontFamily: "var(--font-dm-mono), monospace" }}>
                   {isCompleted && "✓"}
-                  {isCurrent && "●"}
+                  {isCurrent && (
+                    <motion.span
+                      animate={{ opacity: [1, 0.35, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+                      style={{ color: "var(--accent)" }}
+                    >
+                      ●
+                    </motion.span>
+                  )}
                   {isPending && "○"}
                 </span>
               </div>
@@ -177,7 +192,7 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
         >
           STAGE: {job.stage || "INDEXING"} · STATUS: {job.status.toUpperCase()} ({job.progress}%)
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

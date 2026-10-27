@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import {
   ArrowRight,
   Compass,
@@ -103,6 +104,29 @@ function cleanRepoInput(raw: string): string {
 
 export { GOLDEN_DEMO_REPO_URL };
 
+const heroContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.09,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const heroItemVariants: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.45,
+      ease: [0.16, 1, 0.3, 1] as const,
+    },
+  },
+};
+
 export const LandingHero: React.FC<LandingHeroProps> = ({
   onAnalyze,
   isLoading,
@@ -170,7 +194,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       }}
       className="touch-pan-y"
     >
-      <div
+      <motion.div
+        variants={heroContainerVariants}
+        initial="hidden"
+        animate="show"
         style={{
           maxWidth: "960px",
           width: "100%",
@@ -180,7 +207,8 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         }}
       >
         {/* Editorial Subtitle */}
-        <div
+        <motion.div
+          variants={heroItemVariants}
           className="font-mono"
           style={{
             fontSize: "12px",
@@ -191,10 +219,11 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           }}
         >
           CODEATLAS / REPOSITORY INTELLIGENCE
-        </div>
+        </motion.div>
 
         {/* Focal Heading with Accent Highlight */}
-        <h1
+        <motion.h1
+          variants={heroItemVariants}
           style={{
             fontSize: "clamp(36px, 6vw, 92px)",
             fontWeight: 800,
@@ -206,21 +235,25 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         >
           Understand any<br />
           codebase.<br />
-          <span
+          <motion.span
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
             style={{
               background: "var(--accent)",
               color: "#11100F",
               padding: "2px 12px",
               display: "inline-block",
               marginTop: "4px",
+              cursor: "default",
             }}
           >
             Visually.
-          </span>
-        </h1>
+          </motion.span>
+        </motion.h1>
 
         {/* Product Thesis */}
-        <p
+        <motion.p
+          variants={heroItemVariants}
           style={{
             fontSize: "clamp(15px, 2vw, 17px)",
             lineHeight: 1.5,
@@ -230,10 +263,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           }}
         >
           Turns any public or private JavaScript/TypeScript repository into an interactive, deterministic map of its architecture and dependencies, then provides verifiable answers with clickable line citations.
-        </p>
+        </motion.p>
 
         {/* Input Form with fixed prefix https://github.com/ */}
-        <form onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
+        <motion.form variants={heroItemVariants} onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
           <div className="hero-form-container">
             <div
               className="font-mono url-prefix"
@@ -267,7 +300,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                 background: "transparent",
               }}
             />
-            <button
+            <motion.button
+              whileHover={{ opacity: 0.95 }}
+              whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={isLoading || !repoPath.trim()}
               className="btn-primary"
@@ -280,13 +315,14 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                 fontSize: "14px",
                 minHeight: "48px",
                 whiteSpace: "nowrap",
+                cursor: isLoading || !repoPath.trim() ? "not-allowed" : "pointer",
               }}
             >
               <span>{isLoading ? "FETCHING..." : "FETCH REPOSITORY"}</span>
               <ArrowRight size={16} />
-            </button>
+            </motion.button>
           </div>
-        </form>
+        </motion.form>
 
         {/* Authenticated user repository selector (Private & Public) */}
         {authUser && (
@@ -484,7 +520,8 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         )}
 
         {/* Demo Shortcut & Quick Links */}
-        <div
+        <motion.div
+          variants={heroItemVariants}
           style={{
             display: "flex",
             alignItems: "center",
@@ -499,7 +536,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           >
             QUICK DEMOS:
           </span>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={handleDemo}
             disabled={isLoading}
@@ -516,12 +555,15 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               alignItems: "center",
               gap: "6px",
               boxShadow: "2px 2px 0px rgba(0,0,0,0.12)",
+              cursor: "pointer",
             }}
           >
             <Compass size={13} style={{ color: "var(--ink)" }} />
             <span>AUTHFLOW (GOLDEN DEMO)</span>
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => handleSelectSample("https://github.com/pmndrs/zustand")}
             disabled={isLoading}
@@ -533,14 +575,57 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               fontWeight: 600,
               padding: "6px 12px",
               minHeight: "34px",
+              cursor: "pointer",
             }}
           >
             <span>ZUSTAND · STATE</span>
-          </button>
-        </div>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => handleSelectSample("https://github.com/colinhacks/zod")}
+            disabled={isLoading}
+            className="font-mono"
+            style={{
+              background: "var(--white)",
+              borderColor: "var(--border)",
+              fontSize: "11px",
+              fontWeight: 600,
+              padding: "6px 12px",
+              minHeight: "34px",
+              cursor: "pointer",
+            }}
+          >
+            <span>ZOD · VALIDATION</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => handleSelectSample("https://github.com/facebook/react")}
+            disabled={isLoading}
+            className="font-mono"
+            style={{
+              background: "var(--white)",
+              borderColor: "var(--border)",
+              fontSize: "11px",
+              fontWeight: 600,
+              padding: "6px 12px",
+              minHeight: "34px",
+              cursor: "pointer",
+            }}
+          >
+            <span>REACT · UI</span>
+          </motion.button>
+        </motion.div>
 
         {/* Live Architecture & Evidence Teaser Box */}
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
           style={{
             border: "2px solid var(--ink)",
             background: "var(--white)",
@@ -657,7 +742,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Complete Feature Showcase Grid */}
         <div style={{ borderTop: "2px solid var(--ink)", paddingTop: "32px", marginBottom: "48px" }}>
@@ -704,8 +789,18 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             }}
           >
             {FEATURES.map((feat, idx) => (
-              <div
+              <motion.div
                 key={idx}
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] as const }}
+                whileHover={{
+                  y: -4,
+                  boxShadow: "4px 4px 0px rgba(0,0,0,0.18)",
+                  borderColor: "var(--ink)",
+                  transition: { duration: 0.14 },
+                }}
                 style={{
                   border: "1.5px solid var(--border)",
                   background: "var(--white)",
@@ -713,6 +808,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
+                  cursor: "default",
                 }}
               >
                 <div>
@@ -724,7 +820,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                       marginBottom: "12px",
                     }}
                   >
-                    <div
+                    <motion.div
+                      whileHover={{ scale: 1.1, rotate: [0, -3, 3, 0] }}
+                      transition={{ duration: 0.2 }}
                       style={{
                         width: "32px",
                         height: "32px",
@@ -737,7 +835,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                       }}
                     >
                       {feat.icon}
-                    </div>
+                    </motion.div>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       {feat.status && (
                         <span
@@ -810,7 +908,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                     </span>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -885,7 +983,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
