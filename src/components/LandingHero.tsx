@@ -28,6 +28,7 @@ interface LandingHeroProps {
 interface FeatureItem {
   tag: string;
   title: string;
+  status?: string;
   description: string;
   icon: React.ReactNode;
   badges: string[];
@@ -86,6 +87,7 @@ const FEATURES: FeatureItem[] = [
   {
     tag: "MODULE 08",
     title: "Terminal CLI Packaging",
+    status: "COMING SOON",
     description: "Analyze local offline projects and air-gapped repositories straight from your terminal without uploading code to any cloud service.",
     icon: <Terminal size={16} />,
     badges: ["npx codeatlas .", "Local Ingestion", "Air-Gapped Workflows"],
@@ -736,17 +738,35 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                     >
                       {feat.icon}
                     </div>
-                    <span
-                      className="font-mono"
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 700,
-                        color: "var(--muted)",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {feat.tag}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {feat.status && (
+                        <span
+                          className="font-mono"
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: 800,
+                            padding: "1px 6px",
+                            background: "var(--accent)",
+                            color: "#11100F",
+                            border: "1px solid var(--border)",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {feat.status}
+                        </span>
+                      )}
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          color: "var(--muted)",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {feat.tag}
+                      </span>
+                    </div>
                   </div>
 
                   <h3
