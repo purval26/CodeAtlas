@@ -32,6 +32,7 @@ import {
   EdgeDensityMode,
   AVAILABLE_MODELS,
 } from "@/types";
+import { fetchAvailableModels } from "@/utils/api";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -59,6 +60,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [liveVerifiedModels, setLiveVerifiedModels] = useState<any[]>(AVAILABLE_MODELS);
+
+  // Dynamically verify active models on site load
+  useEffect(() => {
+    let mounted = true;
+    fetchAvailableModels(settings.customApiKey)
+      .then((data) => {
+        if (mounted && data.models && data.models.length > 0) {
+          setLiveVerifiedModels(data.models);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [settings.customApiKey]);
 
   // Close on Escape key
   useEffect(() => {
@@ -189,7 +206,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const allAvailableModels = [
-    ...AVAILABLE_MODELS,
+    ...liveVerifiedModels,
     ...settings.customModels.map((cm) => ({
       id: cm.id,
       name: cm.name,

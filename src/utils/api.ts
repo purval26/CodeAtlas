@@ -240,14 +240,27 @@ export async function askCodeAtlasStream(
   return finalResponse;
 }
 
-export async function fetchAvailableModels(): Promise<{
+export async function fetchAvailableModels(customApiKey?: string): Promise<{
   models: ModelOption[];
   defaultFree: string;
   defaultPaid: string;
   provider: string;
   hasApiKey: boolean;
+  requiresApiKey?: boolean;
 }> {
-  const res = await fetch(`${API_BASE}/api/models`);
+  const effectiveKey =
+    customApiKey !== undefined
+      ? customApiKey
+      : typeof window !== "undefined"
+      ? localStorage.getItem("codeatlas_custom_api_key") || ""
+      : "";
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (effectiveKey) {
+    headers["x-custom-api-key"] = effectiveKey;
+  }
+
+  const res = await fetch(`${API_BASE}/api/models`, { headers });
   if (!res.ok) {
     return {
       models: [],

@@ -94,13 +94,30 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
   });
 
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
 
+  // Dynamically verify working models on site load
   useEffect(() => {
     let mounted = true;
-    fetchAvailableModels()
+    fetchAvailableModels(settings.customApiKey)
       .then((data) => {
-        if (mounted) {
-          setHasApiKey(Boolean(data.hasApiKey));
+        if (!mounted) return;
+        setHasApiKey(Boolean(data.hasApiKey));
+        const live = data.models || [];
+        setAvailableModels(live);
+
+        // Dynamic fallback: if currently selected model is missing from live working models and not in customModels,
+        // automatically fallback to the live working default model.
+        if (live.length > 0) {
+          const isAlive =
+            live.some((m: any) => m.id === selectedModel) ||
+            settings.customModels.some((m) => m.id === selectedModel);
+
+          if (!isAlive) {
+            const fallback = data.defaultFree || live[0].id;
+            setSelectedModel(fallback);
+            updateSettings({ selectedModel: fallback });
+          }
         }
       })
       .catch(() => {
@@ -111,7 +128,7 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [settings.customApiKey, selectedModel, settings.customModels, updateSettings]);
 
   // Restore active or most recent session question on modal open (persists until page refresh)
   useEffect(() => {
@@ -1190,25 +1207,33 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                       ))}
                     </optgroup>
                   )}
-                  <optgroup label="FREE MODELS (OpenRouter)">
-                    <option value="nvidia/nemotron-3-ultra-550b-a55b:free">
-                      [FREE] Nemotron 3 Ultra 550B
-                    </option>
-                    <option value="nvidia/nemotron-3.5-lightning:free">
-                      [FREE] Nemotron 3.5 Lightning
-                    </option>
-                    <option value="qwen/qwen-2.5-coder-32b-instruct:free">
-                      [FREE] Qwen 2.5 Coder 32B
-                    </option>
-                    <option value="google/gemini-2.0-flash-exp:free">
-                      [FREE] Gemini 2.0 Flash Exp
-                    </option>
-                  </optgroup>
-                  <optgroup label="PAID MODELS (OpenRouter)">
-                    <option value="google/gemini-3.8-flash">
-                      [PAID] Gemini 3.8 Flash
-                    </option>
-                  </optgroup>
+
+                  {/* Dynamically verified working free models */}
+                  {availableModels.filter((m) => m.mode === "free").length > 0 && (
+                    <optgroup label={hasApiKey ? "VERIFIED FREE MODELS (OpenRouter)" : "AVAILABLE OFFLINE (No API Key)"}>
+                      {availableModels
+                        .filter((m) => m.mode === "free")
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.id.startsWith("codeatlas/") ? "[OFFLINE] " : "[FREE] "}
+                            {m.name.replace(/^\[(FREE|PAID|OFFLINE)\]\s*/i, "")}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+
+                  {/* Dynamically verified working paid models */}
+                  {hasApiKey && availableModels.filter((m) => m.mode === "paid").length > 0 && (
+                    <optgroup label="PAID MODELS (OpenRouter)">
+                      {availableModels
+                        .filter((m) => m.mode === "paid")
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            [PAID] {m.name.replace(/^\[(FREE|PAID)\]\s*/i, "")}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
                 </select>
 
                 {/* Settings shortcut button */}
