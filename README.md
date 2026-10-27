@@ -28,19 +28,20 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
 
 ### 1. Interactive Architecture Canvas (React Flow)
 - **Deterministic 2D Layout Algorithms**:
-  - **Layered (Sugiyama DAG)**: Top-down hierarchical ordering reflecting import and call direction.
-  - **Cluster (Directory Domains)**: Groups related modules into visual bounded context domains.
+  - **Layered / Pipeline (Sugiyama DAG)**: Top-down hierarchical ordering reflecting import and call direction.
+  - **Cluster / Folders (Directory Domains)**: Groups related modules into visual bounded context domains.
   - **Radial (Central Hub Orbit)**: Orbits components around high-degree architectural centers.
   - **Subway (Metro Transit Lines)**: Straight orthogonal transit tracks with uniform grid spacing.
 - **Adaptive Edge Curve Styles**:
   - **Fluid S-Curves (Bezier)**: Adaptive cubic curves with staggered port slots to eliminate line overlap.
   - **Subway Curves**: Rounded 90° orthogonal bends.
-  - **Obstacle-Free**: Dynamically calculates unobstructed paths bypassing intermediate nodes.
-  - **Straight Vectors**: Direct Euclidean line segments.
+  - **Obstacle-Free (Channel)**: Dynamically calculates unobstructed paths bypassing intermediate nodes.
+  - **Straight Vectors (Direct)**: Direct Euclidean line segments.
 - **Anti-Clutter Edge Density Filtering**:
   - **Subtle (Recommended)**: Keeps background dependency lines muted; illuminates active connections on node hover or selection.
   - **Focus Only**: Completely isolates the selected component and its direct imports/dependents.
   - **Dense Tapestry**: Displays all repository connections at full presence.
+- **Production Quick Controls Toolbar**: Directly hot-swap `EDGES:`, `LAYOUT:`, and `CURVES:` straight from the canvas toolbar in production with real-time settings synchronization.
 - **Camera Controls**: Zoom in/out, fit to viewport, and auto-focus centering camera tracking.
 
 ### 2. Trace Flow (Dependency Path Analysis)
@@ -68,6 +69,7 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
   - Solarized Dark
   - Abyss
 - **Clickable Intra-Repo Import Navigation**: Hover over and click any `import ... from "./foo"` line to jump directly to the imported file.
+- **Clickable AST Symbol Outline**: Jump directly from function/class declarations in the File Inspector to their exact highlighted line range in the Code Viewer.
 - **In-File Search**: Press `Ctrl+F` or click the search icon to find keywords with instant match highlighting, match counters (`3 of 12`), and Next/Previous navigation (`Enter` / `Shift+Enter`).
 - **Soft Word Wrapping**: Toggle between horizontal scrolling and word wrapping.
 - **Persistent Status Bar**: Displays current file path, active line numbers, selection line ranges, and language indicator.
@@ -94,6 +96,18 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
 - Secure GitHub OAuth authentication.
 - Analyze private repositories with user-delegated GitHub access tokens.
 
+### 9. Swiss Architectural Motion (Framer Motion)
+- **High-Precision Physics**: Calibrated with stiff spring mechanics (`damping: 32`, `stiffness: 400`) and Apple/Vercel standard cubic-bezier curves (`[0.16, 1, 0.3, 1]`).
+- **Hero Landing Pipeline**: Staggered entrance for hero elements and an interactive live architecture specimen preview.
+- **Fluid Modal & Popover Lifecycle**: `AnimatePresence` ensures smooth, zero-pop transitions for dropdown menus, modals, side-drawers, and sheets.
+- **Interactive Progress Engine**: Live dynamic progress bar and pulsating step indicators in the repository ingestion pipeline.
+
+### 10. Brand Favicons & Adaptive Theme Engine
+- High-contrast monogram vector icons based on the CodeAtlas prototype.
+- **Dual Light/Dark Variants**: Dedicated `/icon-light.svg` (neon lime with dark text) and `/icon-dark.svg` (dark canvas with neon lime text).
+- **Embedded Media Query**: Universal `/icon.svg` adapts dynamically via internal `@media (prefers-color-scheme: dark)`.
+- **Live In-App Reactivity**: Toggling the theme switch in the app immediately updates the active browser tab favicon.
+
 ---
 
 ## ✦ Tech Stack
@@ -102,6 +116,7 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
 | :--- | :--- |
 | **Framework** | [Next.js 16 (App Router)](https://nextjs.org/) with Turbopack |
 | **UI Library** | [React 19](https://react.dev/) |
+| **Motion & Animation** | [Framer Motion v12](https://motion.dev/) |
 | **Language** | [TypeScript 5.9](https://www.typescriptlang.org/) |
 | **Graph Visualization** | [React Flow v11](https://reactflow.dev/) |
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) + Swiss Brutalist CSS Custom Properties |
