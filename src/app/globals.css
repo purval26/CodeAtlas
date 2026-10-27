@@ -150,8 +150,13 @@ input:focus, select:focus, textarea:focus {
   .hero-form-container {
     flex-direction: column;
   }
+  .hero-form-container .url-prefix {
+    padding: 10px 14px 2px 14px !important;
+    font-size: 13px !important;
+  }
   .hero-form-container input {
     border-bottom: 2px solid var(--ink) !important;
+    padding: 4px 14px 12px 14px !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }

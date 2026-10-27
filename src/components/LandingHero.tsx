@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import { ArrowRight, Compass } from "lucide-react";
-
-export const GOLDEN_DEMO_REPO_URL = "https://github.com/pmndrs/zustand";
+import { GOLDEN_DEMO_REPO_URL } from "@/server/shared/constants";
 
 interface LandingHeroProps {
   onAnalyze: (url: string) => void;
@@ -11,27 +10,39 @@ interface LandingHeroProps {
   error?: string | null;
 }
 
+function cleanRepoInput(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^https?:\/\/(?:www\.)?github\.com\/?/i, "")
+    .replace(/^github\.com\/?/i, "");
+}
+
+export { GOLDEN_DEMO_REPO_URL };
+
 export const LandingHero: React.FC<LandingHeroProps> = ({
   onAnalyze,
   isLoading,
   error,
 }) => {
-  const [url, setUrl] = useState("");
+  const [repoPath, setRepoPath] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (url.trim()) {
-      onAnalyze(url.trim());
+    const cleaned = cleanRepoInput(repoPath);
+    if (cleaned) {
+      onAnalyze(`https://github.com/${cleaned}`);
     }
   };
 
   const handleDemo = () => {
-    setUrl(GOLDEN_DEMO_REPO_URL);
+    const demoPath = cleanRepoInput(GOLDEN_DEMO_REPO_URL);
+    setRepoPath(demoPath);
     onAnalyze(GOLDEN_DEMO_REPO_URL);
   };
 
   const handleSelectSample = (sampleUrl: string) => {
-    setUrl(sampleUrl);
+    const cleaned = cleanRepoInput(sampleUrl);
+    setRepoPath(cleaned);
     onAnalyze(sampleUrl);
   };
 
@@ -103,21 +114,36 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           Turns any public or private JavaScript/TypeScript repository into an interactive, deterministic map of its architecture and dependencies, then provides verifiable answers with clickable line citations.
         </p>
 
-        {/* Input Form */}
+        {/* Input Form with default pre URL https://github.com/ */}
         <form onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
           <div className="hero-form-container">
+            <div
+              className="font-mono url-prefix"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                paddingLeft: "16px",
+                color: "var(--muted)",
+                userSelect: "none",
+                fontSize: "15px",
+                fontWeight: 500,
+                whiteSpace: "nowrap",
+              }}
+            >
+              https://github.com/
+            </div>
             <input
               type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://github.com/owner/repository"
+              value={repoPath}
+              onChange={(e) => setRepoPath(cleanRepoInput(e.target.value))}
+              placeholder="owner/repository"
               disabled={isLoading}
-              aria-label="GitHub Repository URL"
+              aria-label="GitHub Repository Path"
               style={{
                 flex: 1,
                 minWidth: 0,
                 border: "none",
-                padding: "14px 18px",
+                padding: "14px 16px 14px 4px",
                 fontSize: "15px",
                 outline: "none",
                 background: "transparent",
@@ -125,7 +151,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             />
             <button
               type="submit"
-              disabled={isLoading || !url.trim()}
+              disabled={isLoading || !repoPath.trim()}
               className="btn-primary"
               aria-label="Fetch repository"
               title="Fetch and analyze repository"
@@ -190,7 +216,21 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             }}
           >
             <Compass size={13} />
-            <span>TRY DEMO REPOSITORY: ZUSTAND</span>
+            <span>TRY DEMO REPOSITORY: AUTHFLOW</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectSample("https://github.com/pmndrs/zustand")}
+            disabled={isLoading}
+            style={{
+              background: "var(--paper)",
+              borderColor: "var(--border)",
+              fontSize: "12px",
+              padding: "6px 12px",
+              minHeight: "34px",
+            }}
+          >
+            <span>ZUSTAND</span>
           </button>
           <button
             type="button"
