@@ -250,9 +250,10 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
 const PackageNodeComponent = ({ data, selected }: NodeProps) => {
   const isDimmed = data.isDimmed;
   const isDirectImport = data.isDirectImport;
+  const isHovered = data.isHovered;
 
   const { opacity } = computeNodeVisuals({
-    selected,
+    selected: selected || isHovered,
     isDirectImport,
     isDimmed,
   });
@@ -266,13 +267,13 @@ const PackageNodeComponent = ({ data, selected }: NodeProps) => {
         maxWidth: `${PKG_WIDTH}px`,
         height: `${PKG_HEIGHT}px`,
         boxSizing: "border-box",
-        background: selected ? "var(--accent)" : isDirectImport ? "var(--hover-bg)" : "var(--paper)",
-        color: selected ? "#11100F" : "var(--ink)",
-        border: selected ? "1.5px solid var(--ink)" : isDirectImport ? "1.5px solid var(--accent)" : "1.5px dashed var(--border)",
+        background: selected || isHovered ? "var(--accent)" : isDirectImport ? "var(--hover-bg)" : "var(--paper)",
+        color: selected || isHovered ? "#11100F" : "var(--ink)",
+        border: selected || isHovered ? "1.5px solid var(--ink)" : isDirectImport ? "1.5px solid var(--accent)" : "1.5px dashed var(--border)",
         fontFamily: "'DM Mono', monospace",
         cursor: "pointer",
         opacity,
-        transition: "opacity 0.18s ease",
+        transition: "opacity 0.18s ease, background 0.15s ease",
         position: "relative",
         display: "flex",
         alignItems: "center",
@@ -324,7 +325,7 @@ const ObstacleFreeEdgeComponent = ({ id, style, markerEnd, data }: EdgeProps) =>
     <BaseEdge
       id={id}
       path={data?.svgPath || ""}
-      style={style}
+      style={{ ...style, pointerEvents: "none" }}
       markerEnd={markerEnd}
     />
   );
@@ -362,7 +363,7 @@ const BezierCurveEdgeComponent = ({
     curvature: adaptiveCurvature,
   });
 
-  return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
+  return <BaseEdge id={id} path={edgePath} style={{ ...style, pointerEvents: "none" }} markerEnd={markerEnd} />;
 };
 
 // Curved Subway (Rounded Orthogonal) Edge with staggered slots
@@ -392,7 +393,7 @@ const CurvedSubwayEdgeComponent = ({
     offset: 16,
   });
 
-  return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
+  return <BaseEdge id={id} path={edgePath} style={{ ...style, pointerEvents: "none" }} markerEnd={markerEnd} />;
 };
 
 // Direct Straight Edge
@@ -412,7 +413,7 @@ const DirectEdgeComponent = ({
     targetY,
   });
 
-  return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
+  return <BaseEdge id={id} path={edgePath} style={{ ...style, pointerEvents: "none" }} markerEnd={markerEnd} />;
 };
 
 const nodeTypes = {
@@ -759,6 +760,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           isDimmed,
           isDirectImport,
           isDirectDependent,
+          isHovered,
         },
         selected: isSelected,
       };
@@ -795,9 +797,10 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
       const inIdx = inList.indexOf(edge.id);
       const inCount = inList.length;
       let targetOffsetY = 0;
+      const isTargetPkg = edge.target.startsWith("pkg:") || edge.target.includes(":pkg:");
+      const maxInSpread = isTargetPkg ? Math.min(8, inCount * 1.5) : Math.min(22, inCount * 3.5);
       if (inCount > 1) {
-        const maxSpread = Math.min(22, inCount * 3.5);
-        targetOffsetY = -maxSpread + (inIdx / (inCount - 1)) * (maxSpread * 2);
+        targetOffsetY = -maxInSpread + (inIdx / (inCount - 1)) * (maxInSpread * 2);
       }
 
       const outList = outgoingPerNode.get(edge.source) || [];
@@ -834,6 +837,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           stroke: strokeColor,
           strokeWidth,
           opacity,
+          pointerEvents: "none",
           transition: "opacity 0.2s ease, stroke 0.2s ease",
         },
       });
@@ -875,8 +879,12 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
-        onNodeMouseEnter={(_: any, node: Node) => setHoveredNodeId(node.id)}
-        onNodeMouseLeave={() => setHoveredNodeId(null)}
+        onNodeMouseEnter={(_: any, node: Node) => {
+          setHoveredNodeId((curr) => (curr === node.id ? curr : node.id));
+        }}
+        onNodeMouseLeave={(_: any, node: Node) => {
+          setHoveredNodeId((curr) => (curr === node.id ? null : curr));
+        }}
         onInit={handleInit}
         defaultViewport={defaultViewport}
         fitView={false}

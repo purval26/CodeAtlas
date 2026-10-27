@@ -335,3 +335,19 @@ input:focus, select:focus, textarea:focus {
   background-color: var(--accent);
   animation: indeterminate-bar 1.8s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
 }
+
+/* ReactFlow edge pointer-events fix to prevent mouseenter/mouseleave hover flicker */
+.react-flow__edge,
+.react-flow__edge-path,
+.react-flow__edge-text,
+.react-flow__connection-path,
+.react-flow__edges g,
+.react-flow__edges svg,
+.react-flow__edges path,
+.react-flow__edge-interaction {
+  pointer-events: none !important;
+}
+
+.react-flow__node {
+  pointer-events: auto !important;
+}
