@@ -1,7 +1,8 @@
 "use client";
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { CodeFile, CodeSymbol } from "@/types";
-import { X, FileCode } from "lucide-react";
+import { X, FileCode, Palette, Copy, Check } from "lucide-react";
+import { VSCODE_THEMES, VSCodeTheme, tokenizeCode } from "@/utils/codeTheming";
 
 interface CodeViewerProps {
   file: CodeFile;
@@ -19,6 +20,39 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevFilePathRef = useRef<string>(file.path);
+  const [copied, setCopied] = useState(false);
+
+  // Selected VS Code theme
+  const [themeId, setThemeId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("codeatlas_code_viewer_theme");
+      if (saved && VSCODE_THEMES.some((t) => t.id === saved)) {
+        return saved;
+      }
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      return isDark ? "vscode-dark" : "vscode-light";
+    }
+    return "vscode-dark";
+  });
+
+  const activeTheme: VSCodeTheme = useMemo(() => {
+    return VSCODE_THEMES.find((t) => t.id === themeId) || VSCODE_THEMES[0];
+  }, [themeId]);
+
+  const handleThemeChange = (newId: string) => {
+    setThemeId(newId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("codeatlas_code_viewer_theme", newId);
+    }
+  };
+
+  const handleCopy = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(file.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Clear stale line refs only when active file path actually changes
   if (prevFilePathRef.current !== file.path) {
@@ -48,15 +82,12 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   useEffect(() => {
     if (targetLineRange && targetLineRange.startLine) {
       const line = targetLineRange.startLine;
-      // Immediate scroll
       scrollToLine(line, false);
 
-      // Microtask / animation frame retry to ensure DOM layout and dimensions are ready
       const raf = requestAnimationFrame(() => {
         scrollToLine(line, false);
       });
 
-      // Timeout fallback after styles/transitions finish
       const timer = setTimeout(() => {
         scrollToLine(line, false);
       }, 60);
@@ -79,7 +110,11 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const lines = file.content.split("\n");
+  const lines = useMemo(() => file.content.split("\n"), [file.content]);
+  const tokenizedLines = useMemo(
+    () => tokenizeCode(lines, file.language),
+    [lines, file.language]
+  );
 
   return (
     <div
@@ -105,30 +140,33 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
     >
       <div
         style={{
-          width: "min(960px, 100vw)",
+          width: "min(980px, 100vw)",
           height: "100%",
-          background: "var(--paper)",
-          borderLeft: "2px solid var(--border)",
+          background: activeTheme.colors.bg,
+          borderLeft: `2px solid ${activeTheme.colors.border}`,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "-10px 0 30px rgba(0,0,0,0.2)",
+          boxShadow: "-10px 0 30px rgba(0,0,0,0.3)",
           position: "relative",
+          overflow: "hidden",
         }}
       >
-        {/* Header */}
+        {/* Header / Tab Bar */}
         <div
           style={{
-            padding: "12px 18px",
-            borderBottom: "1.5px solid var(--border)",
+            padding: "10px 16px",
+            borderBottom: `1px solid ${activeTheme.colors.border}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: "var(--white)",
+            background: activeTheme.colors.tabBg,
             gap: "12px",
+            flexShrink: 0,
           }}
         >
+          {/* File details */}
           <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-            <FileCode size={18} style={{ flexShrink: 0 }} />
+            <FileCode size={18} style={{ flexShrink: 0, color: activeTheme.colors.control }} />
             <div style={{ minWidth: 0 }}>
               <div
                 className="font-mono"
@@ -138,7 +176,9 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
+                  color: activeTheme.colors.text,
                 }}
+                title={file.path}
               >
                 {file.path}
               </div>
@@ -146,10 +186,11 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 className="font-mono"
                 style={{
                   fontSize: "10px",
-                  color: "var(--muted)",
+                  color: activeTheme.colors.gutterText,
                   marginTop: "2px",
                   display: "flex",
                   gap: "8px",
+                  alignItems: "center",
                   flexWrap: "wrap",
                 }}
               >
@@ -157,11 +198,18 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                   {lines.length} lines ({file.lineCount} total)
                 </span>
                 <span>•</span>
-                <span>{file.language}</span>
+                <span style={{ textTransform: "uppercase" }}>{file.language}</span>
                 {targetLineRange && (
                   <>
                     <span>•</span>
-                    <span style={{ color: "var(--ink)", fontWeight: 700 }}>
+                    <span
+                      style={{
+                        color: activeTheme.colors.citationBorder,
+                        fontWeight: 700,
+                        background: activeTheme.colors.citationBg,
+                        padding: "0 4px",
+                      }}
+                    >
                       Lines {targetLineRange.startLine}–{targetLineRange.endLine}
                     </span>
                   </>
@@ -170,24 +218,106 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            style={{
-              padding: "4px 8px",
-              minHeight: "28px",
-              fontSize: "11px",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              flexShrink: 0,
-            }}
-          >
-            <X size={14} />
-            <span style={{ display: "inline-block" }}>CLOSE</span>
-          </button>
+          {/* Controls: Theme Selector, Copy, Close */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+            {/* VS Code Theme Dropdown */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                background: activeTheme.colors.bg,
+                border: `1px solid ${activeTheme.colors.border}`,
+                padding: "2px 6px",
+              }}
+            >
+              <Palette size={12} style={{ color: activeTheme.colors.fn, flexShrink: 0 }} />
+              <label
+                htmlFor="vscode-theme-select"
+                className="font-mono"
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: activeTheme.colors.gutterText,
+                  marginRight: "2px",
+                  userSelect: "none",
+                }}
+              >
+                THEME:
+              </label>
+              <select
+                id="vscode-theme-select"
+                value={themeId}
+                onChange={(e) => handleThemeChange(e.target.value)}
+                aria-label="Select VS Code Theme"
+                className="font-mono"
+                style={{
+                  background: "transparent",
+                  color: activeTheme.colors.text,
+                  border: "none",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                  outline: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {VSCODE_THEMES.map((theme) => (
+                  <option
+                    key={theme.id}
+                    value={theme.id}
+                    style={{
+                      background: theme.colors.bg,
+                      color: theme.colors.text,
+                    }}
+                  >
+                    {theme.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Copy button */}
+            <button
+              onClick={handleCopy}
+              title="Copy file contents"
+              style={{
+                padding: "4px 8px",
+                minHeight: "28px",
+                fontSize: "11px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                background: activeTheme.colors.bg,
+                color: activeTheme.colors.text,
+                borderColor: activeTheme.colors.border,
+              }}
+            >
+              {copied ? <Check size={12} style={{ color: "#4EC9B0" }} /> : <Copy size={12} />}
+              <span>{copied ? "COPIED" : "COPY"}</span>
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              style={{
+                padding: "4px 8px",
+                minHeight: "28px",
+                fontSize: "11px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                background: activeTheme.colors.bg,
+                color: activeTheme.colors.text,
+                borderColor: activeTheme.colors.border,
+              }}
+            >
+              <X size={14} />
+              <span>CLOSE</span>
+            </button>
+          </div>
         </div>
 
-        {/* Code Content with Line Numbers (horizontal scroll inside viewer container only) */}
+        {/* Code Content with Line Numbers */}
         <div
           ref={scrollContainerRef}
           className="font-mono touch-pan-y"
@@ -195,9 +325,9 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             flex: 1,
             overflowY: "auto",
             overflowX: "auto",
-            padding: "16px 0",
-            background: "var(--code)",
-            color: "#F3EFE5",
+            padding: "12px 0",
+            background: activeTheme.colors.bg,
+            color: activeTheme.colors.text,
             fontSize: "13px",
             lineHeight: "22px",
           }}
@@ -209,6 +339,8 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               lineNum >= targetLineRange.startLine &&
               lineNum <= targetLineRange.endLine;
 
+            const tokens = tokenizedLines[idx] || [{ text: lineText || " ", type: "text" }];
+
             return (
               <div
                 key={lineNum}
@@ -218,10 +350,10 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 style={{
                   display: "flex",
                   background: isCited
-                    ? "rgba(216, 255, 62, 0.22)"
+                    ? activeTheme.colors.citationBg
                     : "transparent",
                   borderLeft: isCited
-                    ? "4px solid var(--accent)"
+                    ? `4px solid ${activeTheme.colors.citationBorder}`
                     : "4px solid transparent",
                   paddingRight: "16px",
                   minWidth: "fit-content",
@@ -230,49 +362,69 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 {/* Line number gutter */}
                 <div
                   style={{
-                    width: "52px",
+                    width: "56px",
                     textAlign: "right",
                     paddingRight: "16px",
                     userSelect: "none",
-                    color: isCited ? "var(--accent)" : "#5C5953",
+                    color: isCited
+                      ? activeTheme.colors.gutterActiveText
+                      : activeTheme.colors.gutterText,
                     fontWeight: isCited ? 700 : 400,
+                    background: activeTheme.colors.gutterBg,
                     flexShrink: 0,
                   }}
                 >
                   {lineNum}
                 </div>
 
-                {/* Line text */}
+                {/* Syntax highlighted line text */}
                 <div
                   style={{
                     flex: 1,
                     whiteSpace: "pre",
-                    color: isCited ? "#FFFFFF" : "#E4DFD3",
+                    color: activeTheme.colors.text,
+                    paddingLeft: "8px",
                   }}
                 >
-                  {lineText || " "}
+                  {tokens.map((token, tokenIdx) => {
+                    const tokenColor =
+                      activeTheme.colors[token.type as keyof typeof activeTheme.colors] ||
+                      activeTheme.colors.text;
+
+                    return (
+                      <span key={tokenIdx} style={{ color: tokenColor }}>
+                        {token.text}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Symbols index at footer */}
+        {/* Symbols index at footer (if symbols exist) */}
         {symbols.length > 0 && (
           <div
             style={{
-              padding: "8px 14px",
-              borderTop: "1px solid var(--border)",
-              background: "var(--paper)",
+              padding: "6px 14px",
+              borderTop: `1px solid ${activeTheme.colors.border}`,
+              background: activeTheme.colors.tabBg,
               display: "flex",
               alignItems: "center",
               gap: "8px",
               overflowX: "auto",
+              flexShrink: 0,
             }}
           >
             <span
               className="font-mono"
-              style={{ fontSize: "10px", color: "var(--muted)", fontWeight: 700, flexShrink: 0 }}
+              style={{
+                fontSize: "10px",
+                color: activeTheme.colors.gutterText,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
             >
               JUMP SYMBOL:
             </span>
@@ -285,17 +437,58 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 style={{
                   fontSize: "10px",
                   padding: "2px 8px",
-                  minHeight: "26px",
-                  fontFamily: "DM Mono",
+                  minHeight: "24px",
+                  fontFamily: "var(--font-dm-mono), monospace",
                   flexShrink: 0,
+                  background: activeTheme.colors.bg,
+                  color: activeTheme.colors.text,
+                  borderColor: activeTheme.colors.border,
                 }}
               >
-                <span>{sym.name}</span>
-                <span style={{ color: "var(--muted)" }}>:{sym.startLine}</span>
+                <span style={{ color: activeTheme.colors.fn }}>{sym.name}</span>
+                <span style={{ color: activeTheme.colors.gutterText }}>:{sym.startLine}</span>
               </button>
             ))}
           </div>
         )}
+
+        {/* VS Code Status Bar */}
+        <div
+          style={{
+            height: "24px",
+            background: activeTheme.colors.statusBarBg,
+            color: activeTheme.colors.statusBarText,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 14px",
+            fontSize: "11px",
+            fontFamily: "var(--font-dm-mono), monospace",
+            userSelect: "none",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+            {targetLineRange ? (
+              <span style={{ fontWeight: 700 }}>
+                Ln {targetLineRange.startLine}-{targetLineRange.endLine} (Evidence Target)
+              </span>
+            ) : (
+              <span>Lines: {lines.length}</span>
+            )}
+            <span>•</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {file.path}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+            <span>Spaces: 2</span>
+            <span>UTF-8</span>
+            <span style={{ textTransform: "uppercase" }}>{file.language}</span>
+            <span style={{ fontWeight: 700 }}>{activeTheme.name.split(" ")[0]}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
