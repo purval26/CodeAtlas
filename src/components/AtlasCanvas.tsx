@@ -33,6 +33,26 @@ import {
   PKG_HEIGHT,
 } from "@/utils/layout";
 import { FileCode, Package, Focus, Maximize2 } from "lucide-react";
+import { CustomSelect, CustomSelectOption } from "./CustomSelect";
+
+const EDGE_DENSITY_OPTIONS: CustomSelectOption<EdgeDensityMode>[] = [
+  { value: "subtle", label: "Subtle (Clean)", description: "Subtle background, bright active paths" },
+  { value: "focus", label: "Focus Only", description: "Zero noise: only active file connections" },
+  { value: "all", label: "All Edges", description: "Standard visibility for all connections" },
+];
+
+const LAYOUT_MODE_OPTIONS: CustomSelectOption<GraphLayoutMode>[] = [
+  { value: "layered", label: "Pipeline", description: "Hierarchical left-to-right architecture" },
+  { value: "cluster", label: "Folders", description: "Directory-grouped visual module blocks" },
+  { value: "radial", label: "Radial", description: "Concentric rings around core entrypoint" },
+];
+
+const EDGE_STYLE_OPTIONS: CustomSelectOption<GraphEdgeStyle>[] = [
+  { value: "bezier", label: "Curves", description: "Fluid cubic Bezier S-curves" },
+  { value: "smoothstep", label: "Subway", description: "Orthogonal bus with rounded corners" },
+  { value: "obstacleFree", label: "Channel", description: "Obstacle-avoiding collision lanes" },
+  { value: "straight", label: "Direct", description: "Clean point-to-point vectors" },
+];
 
 interface AtlasCanvasProps {
   graphData: GraphData;
@@ -1022,170 +1042,54 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         )}
       </div>
 
-      {/* Quick Edge Density Filter Pill */}
+      {/* Unified Non-Overlapping Graph Controls Cluster (Custom Select Modules) */}
       <div
         style={{
           position: "absolute",
-          top: isMobile ? "44px" : "12px",
-          left: isMobile ? "12px" : "310px",
-          zIndex: 12,
+          top: "12px",
+          right: "12px",
+          zIndex: 20,
           display: "flex",
           alignItems: "center",
-          background: "var(--paper)",
-          border: "1.5px solid var(--ink)",
-          padding: "2px 4px",
-          boxShadow: "2px 2px 0px rgba(0,0,0,0.12)",
-          gap: "2px",
+          gap: "6px",
+          maxWidth: isMobile ? "calc(100% - 24px)" : "calc(100% - 280px)",
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
         }}
       >
-        <span
-          className="font-mono"
-          style={{
-            fontSize: "9px",
-            fontWeight: 800,
-            color: "var(--muted)",
-            padding: "0 4px",
-            letterSpacing: "0.05em",
-          }}
-        >
-          EDGES:
-        </span>
-        {(
-          [
-            { id: "focus", label: "Focus Only" },
-            { id: "subtle", label: "Subtle (Clean)" },
-            { id: "all", label: "All" },
-          ] as const
-        ).map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => handleSelectDensity(item.id)}
-            className="font-mono"
-            style={{
-              background: edgeDensity === item.id ? "var(--accent)" : "var(--white)",
-              color: edgeDensity === item.id ? "#11100F" : "var(--ink)",
-              border: "1px solid var(--border)",
-              padding: "2px 6px",
-              fontSize: "9px",
-              fontWeight: edgeDensity === item.id ? 800 : 500,
-              cursor: "pointer",
-              textTransform: "uppercase",
-              transition: "background 0.15s ease",
-            }}
-            title={
-              item.id === "focus"
-                ? "Clean view: only display connections for the active/selected file"
-                : item.id === "subtle"
-                ? "Subtle background curves, bold illuminated active connections"
-                : "Display all curves simultaneously"
-            }
-          >
-            {item.label}
-          </button>
-        ))}
+        {/* Anti-Clutter Edge Visibility Custom Select */}
+        <CustomSelect<EdgeDensityMode>
+          labelPrefix="EDGES:"
+          value={edgeDensity}
+          options={EDGE_DENSITY_OPTIONS}
+          onChange={handleSelectDensity}
+          ariaLabel="Edge Visibility Mode"
+          compact={isMobile}
+        />
+
+        {/* Development Environment Custom Select Modules */}
+        {isDevEnv && (
+          <>
+            <CustomSelect<GraphLayoutMode>
+              labelPrefix="LAYOUT:"
+              value={layoutMode}
+              options={LAYOUT_MODE_OPTIONS}
+              onChange={handleSelectLayout}
+              ariaLabel="Graph Layout Mode"
+              compact={isMobile}
+            />
+
+            <CustomSelect<GraphEdgeStyle>
+              labelPrefix="CURVES:"
+              value={edgeStyle}
+              options={EDGE_STYLE_OPTIONS}
+              onChange={handleSelectEdgeStyle}
+              ariaLabel="Edge Curve Style"
+              compact={isMobile}
+            />
+          </>
+        )}
       </div>
-
-      {/* Dev Environment Graph Style Toolbar */}
-      {isDevEnv && (
-        <div
-          style={{
-            position: "absolute",
-            top: "12px",
-            right: "12px",
-            zIndex: 15,
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            background: "var(--paper)",
-            border: "1.5px solid var(--ink)",
-            padding: "3px 6px",
-            boxShadow: "2px 2px 0px rgba(0,0,0,0.12)",
-            maxWidth: "calc(100% - 24px)",
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            className="font-mono"
-            style={{
-              fontSize: "10px",
-              fontWeight: 800,
-              color: "var(--muted)",
-              letterSpacing: "0.05em",
-              padding: "0 2px",
-            }}
-          >
-            DEV STYLES:
-          </span>
-
-          {/* Layout Mode Options */}
-          <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
-            {(
-              [
-                { id: "layered", label: "Pipeline" },
-                { id: "cluster", label: "Folders" },
-                { id: "radial", label: "Radial" },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleSelectLayout(item.id)}
-                className="font-mono"
-                style={{
-                  background: layoutMode === item.id ? "var(--accent)" : "var(--white)",
-                  color: layoutMode === item.id ? "#11100F" : "var(--ink)",
-                  border: "1px solid var(--border)",
-                  padding: "3px 7px",
-                  fontSize: "10px",
-                  fontWeight: layoutMode === item.id ? 800 : 500,
-                  cursor: "pointer",
-                  textTransform: "uppercase",
-                  transition: "background 0.15s ease",
-                }}
-                title={`Layout mode: ${item.label}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <span style={{ width: "1px", height: "14px", background: "var(--border)" }} />
-
-          {/* Edge Curve Options */}
-          <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
-            {(
-              [
-                { id: "bezier", label: "Curves" },
-                { id: "smoothstep", label: "Subway" },
-                { id: "obstacleFree", label: "Channel" },
-                { id: "straight", label: "Direct" },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleSelectEdgeStyle(item.id)}
-                className="font-mono"
-                style={{
-                  background: edgeStyle === item.id ? "var(--accent)" : "var(--white)",
-                  color: edgeStyle === item.id ? "#11100F" : "var(--ink)",
-                  border: "1px solid var(--border)",
-                  padding: "3px 7px",
-                  fontSize: "10px",
-                  fontWeight: edgeStyle === item.id ? 800 : 500,
-                  cursor: "pointer",
-                  textTransform: "uppercase",
-                  transition: "background 0.15s ease",
-                }}
-                title={`Edge style: ${item.label}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
