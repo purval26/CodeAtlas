@@ -189,18 +189,29 @@ export default function Home() {
           const graphRes = await fetch(`/api/graph/${updatedJob.repositoryId}`);
           if (graphRes.ok) {
             const graph: GraphData = await graphRes.json();
-            setGraphData(graph);
+            if (!graph.nodes || graph.nodes.length === 0) {
+              setLandingError("No supported code files were detected in this repository.");
+              setActiveJob(null);
+            } else {
+              setGraphData(graph);
 
-            // Select first file node by default
-            const firstFile = graph.nodes.find((n) => n.type === "file");
-            if (firstFile) {
-              setSelectedNodeId(firstFile.id);
-              setTraceStartId(firstFile.id);
+              // Select first file node by default
+              const firstFile = graph.nodes.find((n) => n.type === "file");
+              if (firstFile) {
+                setSelectedNodeId(firstFile.id);
+                setTraceStartId(firstFile.id);
+              }
             }
+          } else {
+            const errData = await graphRes.json().catch(() => ({}));
+            setLandingError(errData.message || "Failed to load repository graph data.");
+            setActiveJob(null);
           }
         } else if (updatedJob.status === "failed") {
           clearInterval(interval);
           setIsAnalyzing(false);
+          setLandingError(updatedJob.error || "Analysis failed.");
+          setActiveJob(null);
         }
       } catch (pollErr) {
         console.error("Job poll error:", pollErr);

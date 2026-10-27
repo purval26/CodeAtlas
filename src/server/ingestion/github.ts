@@ -225,13 +225,62 @@ export async function fetchRepositoryFiles(
     const batch = relevantEntries.slice(i, i + batchSize);
     const results = await Promise.all(
       batch.map(async (entry: any) => {
-        const rawFileUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${defaultBranch}/${entry.path}`;
         try {
-          const res = await fetch(rawFileUrl, { headers });
-          if (!res.ok) return null;
-          const text = await res.text();
-          if (text.length > MAX_FILE_SIZE_BYTES) return null;
-          return { path: entry.path as string, content: text };
+          // 1. If we have a blob sha and authorization token, fetch via GitHub REST API
+          if (entry.sha && token) {
+            const blobUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/blobs/${entry.sha}`;
+            const res = await fetch(blobUrl, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github.raw",
+                "User-Agent": "CodeAtlas-Analyzer/1.0",
+              },
+            });
+            if (res.ok) {
+              const text = await res.text();
+              if (text.length <= MAX_FILE_SIZE_BYTES) {
+                return { path: entry.path as string, content: text };
+              }
+              return null;
+            }
+          }
+
+          // 2. Direct raw fetch fallback (works for public repositories and raw content)
+          const rawHeaders: Record<string, string> = {
+            "User-Agent": "CodeAtlas-Analyzer/1.0",
+          };
+          if (token) {
+            rawHeaders["Authorization"] = `token ${token}`;
+          }
+
+          const rawFileUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${defaultBranch}/${entry.path}`;
+          const res = await fetch(rawFileUrl, { headers: rawHeaders });
+          if (res.ok) {
+            const text = await res.text();
+            if (text.length <= MAX_FILE_SIZE_BYTES) {
+              return { path: entry.path as string, content: text };
+            }
+            return null;
+          }
+
+          // 3. Fallback to API blob if raw fetch failed
+          if (entry.sha && !token) {
+            const blobUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/blobs/${entry.sha}`;
+            const res = await fetch(blobUrl, {
+              headers: {
+                Accept: "application/vnd.github.raw",
+                "User-Agent": "CodeAtlas-Analyzer/1.0",
+              },
+            });
+            if (res.ok) {
+              const text = await res.text();
+              if (text.length <= MAX_FILE_SIZE_BYTES) {
+                return { path: entry.path as string, content: text };
+              }
+            }
+          }
+
+          return null;
         } catch {
           return null;
         }

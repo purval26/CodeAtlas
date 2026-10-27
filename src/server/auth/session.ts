@@ -8,8 +8,15 @@ export interface UserSession {
   createdAt: number;
 }
 
-const userSessions = new Map<string, UserSession>();
-const oauthStates = new Map<string, number>();
+const globalForAuth = globalThis as unknown as {
+  userSessions?: Map<string, UserSession>;
+  oauthStates?: Map<string, number>;
+};
+
+const userSessions = globalForAuth.userSessions || new Map<string, UserSession>();
+const oauthStates = globalForAuth.oauthStates || new Map<string, number>();
+globalForAuth.userSessions = userSessions;
+globalForAuth.oauthStates = oauthStates;
 
 // Parse cookie string into key-value map
 export function parseCookieString(cookieHeader: string | null): Record<string, string> {

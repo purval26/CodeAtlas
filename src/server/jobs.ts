@@ -216,7 +216,18 @@ export class JobManager {
           codePaths.push(file.path);
           parsedCount++;
         } catch (err: any) {
-          console.warn(`AST Parse warning for ${file.path}:`, err.message);
+          console.error(`AST Parse error for ${file.path}:`, err?.message || err);
+        }
+      }
+
+      if (parsedCount === 0 && files.length > 0) {
+        const nonConfigFiles = files.filter(
+          (f) => f.path !== "tsconfig.json" && f.path !== "package.json"
+        );
+        if (nonConfigFiles.length > 0) {
+          throw new Error(
+            `Failed to parse code files (${nonConfigFiles.length} files detected). Ensure they are valid TypeScript/JavaScript.`
+          );
         }
       }
 
@@ -285,4 +296,4 @@ export class JobManager {
 // Global singleton to persist across Next.js API requests in node environment
 const globalForJobs = globalThis as unknown as { jobManager: JobManager };
 export const jobManager = globalForJobs.jobManager || new JobManager();
-if (process.env.NODE_ENV !== "production") globalForJobs.jobManager = jobManager;
+globalForJobs.jobManager = jobManager;
