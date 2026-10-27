@@ -683,6 +683,12 @@ export default function Home() {
             symbols={activeFile.symbols}
             targetLineRange={activeFile.targetLineRange}
             onClose={() => setActiveFile(null)}
+            onNavigateToFile={(targetPath) => handleOpenSource(targetPath)}
+            knownFilePaths={
+              graphData?.nodes
+                .filter((n) => n.type === "file" && n.path)
+                .map((n) => n.path!) || []
+            }
           />
         )}
 

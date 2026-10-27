@@ -545,3 +545,70 @@ export function tokenizeCode(lines: string[], language: string = "typescript"): 
 
   return result;
 }
+
+export function resolveImportPath(
+  currentFilePath: string,
+  importSpecifier: string,
+  knownFilePaths: string[]
+): string | null {
+  const spec = importSpecifier.replace(/^['"`]|['"`]$/g, "").trim();
+  if (!spec) return null;
+
+  const pathSet = new Set(knownFilePaths);
+  const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json", ".css"];
+
+  const findMatch = (candidate: string): string | null => {
+    if (pathSet.has(candidate)) return candidate;
+    for (const ext of extensions) {
+      if (pathSet.has(candidate + ext)) return candidate + ext;
+      if (pathSet.has(`${candidate}/index${ext}`)) return `${candidate}/index${ext}`;
+    }
+    return null;
+  };
+
+  // 1. Relative paths (./ or ../)
+  if (spec.startsWith("./") || spec.startsWith("../")) {
+    const currentParts = currentFilePath.split("/");
+    currentParts.pop(); // remove current filename to get directory
+    const specParts = spec.split("/");
+
+    for (const part of specParts) {
+      if (part === ".") continue;
+      if (part === "..") {
+        currentParts.pop();
+      } else {
+        currentParts.push(part);
+      }
+    }
+    const resolved = currentParts.join("/");
+    const match = findMatch(resolved);
+    if (match) return match;
+  }
+
+  // 2. Alias paths (@/ or ~/)
+  if (spec.startsWith("@/") || spec.startsWith("~/")) {
+    const withoutPrefix = spec.slice(2);
+    const candidates = [`src/${withoutPrefix}`, withoutPrefix];
+    for (const c of candidates) {
+      const match = findMatch(c);
+      if (match) return match;
+    }
+  }
+
+  // 3. Fallback: Check if any known file path matches basename or ends with the specifier
+  const match = knownFilePaths.find(
+    (p) =>
+      p === spec ||
+      p.endsWith(`/${spec}`) ||
+      p.endsWith(`/${spec}.ts`) ||
+      p.endsWith(`/${spec}.tsx`) ||
+      p.endsWith(`/${spec}.js`) ||
+      p.endsWith(`/${spec}.jsx`) ||
+      p.endsWith(`/${spec}/index.ts`) ||
+      p.endsWith(`/${spec}/index.tsx`)
+  );
+  if (match) return match;
+
+  return null;
+}
+
