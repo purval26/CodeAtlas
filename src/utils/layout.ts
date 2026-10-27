@@ -1,4 +1,6 @@
-import { GraphEdge, GraphNode } from "@/types";
+import { GraphEdge, GraphNode, GraphLayoutMode, GraphEdgeStyle } from "@/types";
+
+export type { GraphLayoutMode, GraphEdgeStyle };
 
 export interface NodePosition {
   x: number;
@@ -271,6 +273,244 @@ export function computeDependencyLayout(
     rowGap,
     layerGap,
   };
+}
+
+/**
+ * Computes a concentric orbital / radial layout.
+ * The primary architectural root sits at the center, and dependency layers radiate outward in rings.
+ */
+export function computeRadialLayout(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  options?: GraphLayoutOptions
+): GraphLayoutResult {
+  const positions = new Map<string, NodePosition>();
+  if (nodes.length === 0) {
+    return { positions, width: 0, height: 0, rowGap: 26, layerGap: 90 };
+  }
+
+  const fileNodes = nodes.filter((n) => n.type === "file");
+
+  // Degree calculation (total connections)
+  const degreeMap = new Map<string, number>();
+  for (const n of nodes) degreeMap.set(n.id, 0);
+  for (const e of edges) {
+    degreeMap.set(e.source, (degreeMap.get(e.source) || 0) + 1);
+    degreeMap.set(e.target, (degreeMap.get(e.target) || 0) + 1);
+  }
+
+  // Find center hub (prioritizing entry files or highest connected node)
+  const sortedFiles = [...fileNodes].sort((a, b) => {
+    const pA = (a.path || "").toLowerCase();
+    const pB = (b.path || "").toLowerCase();
+    const isEntryA = pA.includes("index") || pA.includes("main") || pA.includes("app") || pA.includes("login");
+    const isEntryB = pB.includes("index") || pB.includes("main") || pB.includes("app") || pB.includes("login");
+    if (isEntryA && !isEntryB) return -1;
+    if (!isEntryA && isEntryB) return 1;
+    return (degreeMap.get(b.id) || 0) - (degreeMap.get(a.id) || 0);
+  });
+
+  const centerNode = sortedFiles[0] || nodes[0];
+
+  // Adjacency
+  const adj = new Map<string, string[]>();
+  for (const n of nodes) adj.set(n.id, []);
+  for (const e of edges) {
+    adj.get(e.source)?.push(e.target);
+    adj.get(e.target)?.push(e.source);
+  }
+
+  // BFS depth from centerNode
+  const depth = new Map<string, number>();
+  depth.set(centerNode.id, 0);
+
+  const queue = [centerNode.id];
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    const currDepth = depth.get(curr)!;
+    for (const neighbor of adj.get(curr) || []) {
+      if (!depth.has(neighbor)) {
+        depth.set(neighbor, currDepth + 1);
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  // Assign outer orbit to disconnected or package nodes
+  for (const n of nodes) {
+    if (!depth.has(n.id)) {
+      depth.set(n.id, n.type === "package" ? 3 : 2);
+    }
+  }
+
+  // Group nodes by depth ring
+  const rings = new Map<number, GraphNode[]>();
+  for (const n of nodes) {
+    const d = depth.get(n.id) || 0;
+    if (!rings.has(d)) rings.set(d, []);
+    rings.get(d)!.push(n);
+  }
+
+  const vpW = Math.max(options?.viewportWidth || 1200, 1100);
+  const vpH = Math.max(options?.viewportHeight || 800, 800);
+  const centerX = vpW / 2;
+  const centerY = vpH / 2;
+
+  // Center node placement
+  positions.set(centerNode.id, {
+    x: centerX - NODE_WIDTH / 2,
+    y: centerY - NODE_HEIGHT / 2,
+    depth: 0,
+  });
+
+  const sortedRings = Array.from(rings.keys())
+    .filter((d) => d > 0)
+    .sort((a, b) => a - b);
+
+  let maxRadius = 260;
+  const baseRadius = 260;
+  const ringGap = 220;
+
+  for (const ringDepth of sortedRings) {
+    const ringNodes = rings.get(ringDepth) || [];
+    const count = ringNodes.length;
+    if (count === 0) continue;
+
+    const minCircumference = count * (NODE_WIDTH + 40);
+    const radiusFromCircumference = minCircumference / (2 * Math.PI);
+    const radius = Math.max(baseRadius + (ringDepth - 1) * ringGap, radiusFromCircumference);
+    maxRadius = Math.max(maxRadius, radius);
+
+    const angleStep = (2 * Math.PI) / count;
+    // Stagger phase offset so rays do not align strictly in line
+    const phaseOffset = ringDepth * 0.35;
+
+    ringNodes.forEach((node, i) => {
+      const angle = phaseOffset + i * angleStep;
+      const dim = getNodeDimensions(node);
+      const x = centerX + radius * Math.cos(angle) - dim.width / 2;
+      const y = centerY + radius * Math.sin(angle) - dim.height / 2;
+
+      positions.set(node.id, { x, y, depth: ringDepth });
+    });
+  }
+
+  const totalWidth = centerX + maxRadius + NODE_WIDTH + 100;
+  const totalHeight = centerY + maxRadius + NODE_HEIGHT + 100;
+
+  return {
+    positions,
+    width: totalWidth,
+    height: totalHeight,
+    rowGap: 32,
+    layerGap: 120,
+  };
+}
+
+/**
+ * Computes a folder/module cluster layout.
+ * Groups nodes physically into directory-based visual clusters.
+ */
+export function computeClusterLayout(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  options?: GraphLayoutOptions
+): GraphLayoutResult {
+  const positions = new Map<string, NodePosition>();
+  if (nodes.length === 0) {
+    return { positions, width: 0, height: 0, rowGap: 26, layerGap: 90 };
+  }
+
+  function getClusterKey(node: GraphNode): string {
+    if (node.type === "package") return "External Packages";
+    const p = (node.path || "").replace(/\\/g, "/");
+    const parts = p.split("/").filter(Boolean);
+    if (parts.length <= 1) return "Root";
+    if (parts[0] === "src" && parts.length > 2) {
+      return parts.slice(1, -1).join("/");
+    }
+    return parts.slice(0, -1).join("/") || "Root";
+  }
+
+  const clusters = new Map<string, GraphNode[]>();
+  for (const n of nodes) {
+    const key = getClusterKey(n);
+    if (!clusters.has(key)) clusters.set(key, []);
+    clusters.get(key)!.push(n);
+  }
+
+  const clusterNames = Array.from(clusters.keys()).sort((a, b) => {
+    if (a === "External Packages") return 1;
+    if (b === "External Packages") return -1;
+    const priority = (name: string) => {
+      const lower = name.toLowerCase();
+      if (lower.includes("page") || lower.includes("feature") || lower.includes("auth")) return 1;
+      if (lower.includes("context") || lower.includes("state") || lower.includes("store")) return 2;
+      if (lower.includes("component") || lower.includes("ui")) return 3;
+      if (lower.includes("hook") || lower.includes("service") || lower.includes("api")) return 4;
+      if (lower.includes("util") || lower.includes("helper") || lower.includes("type")) return 5;
+      return 6;
+    };
+    return priority(a) - priority(b);
+  });
+
+  const clusterGapX = 110;
+  let cursorX = 60;
+  let maxGraphY = 60;
+  let totalMaxX = 60;
+
+  clusterNames.forEach((clusterName, cIdx) => {
+    const cNodes = clusters.get(clusterName) || [];
+    cNodes.sort((a, b) => a.label.localeCompare(b.label));
+
+    // Internal grid inside cluster
+    const internalCols = Math.min(2, Math.max(1, Math.ceil(cNodes.length / 4)));
+    const internalRows = Math.ceil(cNodes.length / internalCols);
+
+    const clusterX = cursorX;
+    const clusterY = 70;
+
+    cNodes.forEach((node, nIdx) => {
+      const col = Math.floor(nIdx / internalRows);
+      const row = nIdx % internalRows;
+      const dim = getNodeDimensions(node);
+
+      const x = clusterX + col * (NODE_WIDTH + 26);
+      const y = clusterY + row * (dim.height + 28);
+
+      positions.set(node.id, { x, y, depth: cIdx });
+      maxGraphY = Math.max(maxGraphY, y + dim.height + 40);
+      totalMaxX = Math.max(totalMaxX, x + dim.width + 40);
+    });
+
+    cursorX += internalCols * (NODE_WIDTH + 26) + clusterGapX;
+  });
+
+  return {
+    positions,
+    width: totalMaxX + 80,
+    height: maxGraphY + 80,
+    rowGap: 28,
+    layerGap: clusterGapX,
+  };
+}
+
+/**
+ * Universal layout dispatcher supporting layered, cluster, and radial modes.
+ */
+export function computeGraphLayout(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  mode: GraphLayoutMode = "layered",
+  options?: GraphLayoutOptions
+): GraphLayoutResult {
+  if (mode === "radial") {
+    return computeRadialLayout(nodes, edges, options);
+  }
+  if (mode === "cluster") {
+    return computeClusterLayout(nodes, edges, options);
+  }
+  return computeDependencyLayout(nodes, edges, options);
 }
 
 export interface ArchitectureFocusResult {

@@ -14,9 +14,13 @@ import ReactFlow, {
   EdgeProps,
   BaseEdge,
   MarkerType,
+  getBezierPath,
+  getSmoothStepPath,
+  getStraightPath,
 } from "reactflow";
-import { GraphData } from "@/types";
+import { GraphData, GraphLayoutMode, GraphEdgeStyle } from "@/types";
 import {
+  computeGraphLayout,
   computeDependencyLayout,
   computeArchitectureFocus,
   computeObstacleFreeEdgeRoutes,
@@ -300,13 +304,88 @@ const ObstacleFreeEdgeComponent = ({ id, style, markerEnd, data }: EdgeProps) =>
   );
 };
 
+// Smooth Bezier S-Curve Edge (Recommended)
+const BezierCurveEdgeComponent = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  markerEnd,
+  data,
+}: EdgeProps) => {
+  const [edgePath] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    curvature: data?.curvature ?? 0.38,
+  });
+
+  return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
+};
+
+// Curved Subway (Rounded Orthogonal) Edge
+const CurvedSubwayEdgeComponent = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  markerEnd,
+}: EdgeProps) => {
+  const [edgePath] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 20,
+    offset: 16,
+  });
+
+  return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
+};
+
+// Direct Straight Edge
+const DirectEdgeComponent = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  style,
+  markerEnd,
+}: EdgeProps) => {
+  const [edgePath] = getStraightPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+  });
+
+  return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
+};
+
 const nodeTypes = {
   file: FileNodeComponent,
   package: PackageNodeComponent,
 };
 
 const edgeTypes = {
+  bezier: BezierCurveEdgeComponent,
+  smoothstep: CurvedSubwayEdgeComponent,
   obstacleFree: ObstacleFreeEdgeComponent,
+  straight: DirectEdgeComponent,
 };
 
 export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
@@ -353,14 +432,62 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     }
   }, []);
 
+  // User selected graph layout and edge curve modes (defaults to recommended Bezier + Layered)
+  const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("codeatlas_graph_layout");
+      if (saved === "radial" || saved === "cluster" || saved === "layered") return saved;
+    }
+    return "layered";
+  });
+
+  const [edgeStyle, setEdgeStyle] = useState<GraphEdgeStyle>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("codeatlas_graph_edge_style");
+      if (
+        saved === "bezier" ||
+        saved === "smoothstep" ||
+        saved === "obstacleFree" ||
+        saved === "straight"
+      ) {
+        return saved;
+      }
+    }
+    return "bezier"; // Recommended default: Smooth Bezier curves!
+  });
+
+  const handleSelectLayout = (mode: GraphLayoutMode) => {
+    setLayoutMode(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("codeatlas_graph_layout", mode);
+    }
+    setTimeout(() => {
+      fitView({ padding: isMobile ? 0.04 : 0.06, duration: 350 });
+    }, 40);
+  };
+
+  const handleSelectEdgeStyle = (style: GraphEdgeStyle) => {
+    setEdgeStyle(style);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("codeatlas_graph_edge_style", style);
+    }
+  };
+
+  const isDevEnv =
+    process.env.NODE_ENV !== "production" ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.search.includes("dev=true")));
+
   // 1. Compute deterministic 2D layout adapted to available component viewport space
   const layoutResult = useMemo(() => {
-    return computeDependencyLayout(graphData.nodes, graphData.edges, {
+    return computeGraphLayout(graphData.nodes, graphData.edges, layoutMode, {
       viewportWidth: componentSize.width,
       viewportHeight: componentSize.height,
       isMobile,
     });
-  }, [graphData.repository.id, graphData.nodes, graphData.edges, componentSize.width, componentSize.height, isMobile]);
+  }, [graphData.repository.id, graphData.nodes, graphData.edges, layoutMode, componentSize.width, componentSize.height, isMobile]);
 
   // 2. Compute obstacle-free edge routes (preventing any overlap between cards and connection / trace lines)
   const edgeRoutes = useMemo(() => {
@@ -560,9 +687,10 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: "obstacleFree",
+        type: edgeStyle,
         data: {
           svgPath: route?.svgPath || "",
+          curvature: 0.38,
         },
         animated,
         className: isTraceEdge ? "highlighted" : "",
@@ -588,6 +716,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     graphData.edges,
     layoutResult,
     edgeRoutes,
+    edgeStyle,
     selectedNodeId,
     tracePathNodeIds,
     tracePathEdgeIds,
@@ -779,6 +908,107 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           </span>
         )}
       </div>
+
+      {/* Dev Environment Graph Style Toolbar */}
+      {isDevEnv && (
+        <div
+          style={{
+            position: "absolute",
+            top: "12px",
+            right: "12px",
+            zIndex: 15,
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "var(--paper)",
+            border: "1.5px solid var(--ink)",
+            padding: "3px 6px",
+            boxShadow: "2px 2px 0px rgba(0,0,0,0.12)",
+            maxWidth: "calc(100% - 24px)",
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            className="font-mono"
+            style={{
+              fontSize: "10px",
+              fontWeight: 800,
+              color: "var(--muted)",
+              letterSpacing: "0.05em",
+              padding: "0 2px",
+            }}
+          >
+            DEV STYLES:
+          </span>
+
+          {/* Layout Mode Options */}
+          <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+            {(
+              [
+                { id: "layered", label: "Pipeline" },
+                { id: "cluster", label: "Folders" },
+                { id: "radial", label: "Radial" },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelectLayout(item.id)}
+                className="font-mono"
+                style={{
+                  background: layoutMode === item.id ? "var(--accent)" : "var(--white)",
+                  color: layoutMode === item.id ? "#11100F" : "var(--ink)",
+                  border: "1px solid var(--border)",
+                  padding: "3px 7px",
+                  fontSize: "10px",
+                  fontWeight: layoutMode === item.id ? 800 : 500,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  transition: "background 0.15s ease",
+                }}
+                title={`Layout mode: ${item.label}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <span style={{ width: "1px", height: "14px", background: "var(--border)" }} />
+
+          {/* Edge Curve Options */}
+          <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+            {(
+              [
+                { id: "bezier", label: "Curves" },
+                { id: "smoothstep", label: "Subway" },
+                { id: "obstacleFree", label: "Channel" },
+                { id: "straight", label: "Direct" },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelectEdgeStyle(item.id)}
+                className="font-mono"
+                style={{
+                  background: edgeStyle === item.id ? "var(--accent)" : "var(--white)",
+                  color: edgeStyle === item.id ? "#11100F" : "var(--ink)",
+                  border: "1px solid var(--border)",
+                  padding: "3px 7px",
+                  fontSize: "10px",
+                  fontWeight: edgeStyle === item.id ? 800 : 500,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  transition: "background 0.15s ease",
+                }}
+                title={`Edge style: ${item.label}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
