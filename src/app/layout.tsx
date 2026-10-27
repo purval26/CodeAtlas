@@ -19,6 +19,14 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "CodeAtlas — Repository Intelligence",
   description: "Understand any codebase visually. Structure first. Reason second. Evidence always.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

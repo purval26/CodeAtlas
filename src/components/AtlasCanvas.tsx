@@ -536,13 +536,6 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     updateSettings({ edgeDensity: density });
   };
 
-  const isDevEnv =
-    process.env.NODE_ENV !== "production" ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1" ||
-        window.location.search.includes("dev=true")));
-
   // 1. Compute deterministic 2D layout adapted to available component viewport space
   const layoutResult = useMemo(() => {
     return computeGraphLayout(graphData.nodes, graphData.edges, layoutMode, {
@@ -1064,42 +1057,44 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         </Panel>
       </FlowComponent>
 
-      {/* Atlas header indicator */}
-      <div
-        className="font-mono"
-        style={{
-          position: "absolute",
-          top: "12px",
-          left: "12px",
-          background: "var(--paper)",
-          border: "1px solid var(--border)",
-          padding: "4px 8px",
-          fontSize: isMobile ? "10px" : "11px",
-          display: "flex",
-          gap: isMobile ? "6px" : "12px",
-          flexWrap: "wrap",
-          pointerEvents: "none",
-          zIndex: 10,
-          maxWidth: "calc(100% - 24px)",
-        }}
-      >
-        <span>
-          MAP: <strong>{graphData.stats.totalFiles} FILES</strong>
-        </span>
-        <span>
-          <strong>{graphData.stats.totalPackages} PKGS</strong>
-        </span>
-        <span>
-          <strong>{graphData.stats.totalImports} EDGES</strong>
-        </span>
-        {tracePathNodeIds.length > 0 && (
-          <span style={{ color: "var(--ink)", background: "var(--accent)", padding: "0 4px" }}>
-            TRACE: {tracePathNodeIds.length} STEPS
+      {/* Atlas header indicator (hidden on compact mobile to give priority to graph controls) */}
+      {!isMobile && (
+        <div
+          className="font-mono"
+          style={{
+            position: "absolute",
+            top: "12px",
+            left: "12px",
+            background: "var(--paper)",
+            border: "1px solid var(--border)",
+            padding: "4px 8px",
+            fontSize: "11px",
+            display: "flex",
+            gap: "12px",
+            flexWrap: "wrap",
+            pointerEvents: "none",
+            zIndex: 10,
+            maxWidth: "calc(100% - 24px)",
+          }}
+        >
+          <span>
+            MAP: <strong>{graphData.stats.totalFiles} FILES</strong>
           </span>
-        )}
-      </div>
+          <span>
+            <strong>{graphData.stats.totalPackages} PKGS</strong>
+          </span>
+          <span>
+            <strong>{graphData.stats.totalImports} EDGES</strong>
+          </span>
+          {tracePathNodeIds.length > 0 && (
+            <span style={{ color: "var(--ink)", background: "var(--accent)", padding: "0 4px" }}>
+              TRACE: {tracePathNodeIds.length} STEPS
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* Unified Non-Overlapping Graph Controls Cluster (Custom Select Modules) */}
+      {/* Unified Graph Controls Cluster (Production-ready Layout, Curves & Edge Density) */}
       <div
         style={{
           position: "absolute",
@@ -1108,7 +1103,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           zIndex: 20,
           display: "flex",
           alignItems: "center",
-          gap: "6px",
+          gap: isMobile ? "4px" : "6px",
           maxWidth: isMobile ? "calc(100% - 24px)" : "calc(100% - 280px)",
           flexWrap: "wrap",
           justifyContent: "flex-end",
@@ -1121,6 +1116,26 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           options={EDGE_DENSITY_OPTIONS}
           onChange={handleSelectDensity}
           ariaLabel="Edge Visibility Mode"
+          compact={isMobile}
+        />
+
+        {/* Graph Layout Architecture Selector */}
+        <CustomSelect<GraphLayoutMode>
+          labelPrefix="LAYOUT:"
+          value={layoutMode}
+          options={LAYOUT_MODE_OPTIONS}
+          onChange={handleSelectLayout}
+          ariaLabel="Graph Layout Mode"
+          compact={isMobile}
+        />
+
+        {/* Edge Curve Geometry Selector */}
+        <CustomSelect<GraphEdgeStyle>
+          labelPrefix="CURVES:"
+          value={edgeStyle}
+          options={EDGE_STYLE_OPTIONS}
+          onChange={handleSelectEdgeStyle}
+          ariaLabel="Edge Curve Style"
           compact={isMobile}
         />
       </div>
