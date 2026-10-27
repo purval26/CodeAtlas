@@ -535,38 +535,6 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           >
             <span>ZUSTAND · STATE</span>
           </button>
-          <button
-            type="button"
-            onClick={() => handleSelectSample("https://github.com/colinhacks/zod")}
-            disabled={isLoading}
-            className="font-mono"
-            style={{
-              background: "var(--white)",
-              borderColor: "var(--border)",
-              fontSize: "11px",
-              fontWeight: 600,
-              padding: "6px 12px",
-              minHeight: "34px",
-            }}
-          >
-            <span>ZOD · VALIDATION</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectSample("https://github.com/facebook/react")}
-            disabled={isLoading}
-            className="font-mono"
-            style={{
-              background: "var(--white)",
-              borderColor: "var(--border)",
-              fontSize: "11px",
-              fontWeight: 600,
-              padding: "6px 12px",
-              minHeight: "34px",
-            }}
-          >
-            <span>REACT · UI</span>
-          </button>
         </div>
 
         {/* Live Architecture & Evidence Teaser Box */}
