@@ -1,18 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
-  <!-- Swiss Brutalist Deep Ink Canvas -->
-  <rect width="32" height="32" rx="6" fill="#11100F"/>
-  <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="5.25" stroke="#2C2A28" stroke-width="1.5"/>
-  
-  <!-- Subtle Architectural Compass & Grid Coordinate -->
-  <line x1="3" y1="16" x2="29" y2="16" stroke="#FFC83B" stroke-width="0.75" stroke-dasharray="2 2" opacity="0.2"/>
-  <circle cx="26" cy="6" r="2.2" fill="#FFC83B"/>
-  <line x1="21" y1="9" x2="26" y2="6" stroke="#FFC83B" stroke-width="1" stroke-dasharray="1.5 1.5" opacity="0.4"/>
-
-  <!-- High-Precision Monogram 'CA' (CodeAtlas) -->
-  <!-- Geometric 'C' -->
-  <path d="M 13.5 9 H 7.5 V 23 H 13.5" stroke="#FFC83B" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"/>
-  
-  <!-- Geometric 'A' -->
-  <path d="M 17 23 L 21 9 L 25 23" stroke="#FFC83B" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"/>
-  <line x1="18.2" y1="17.5" x2="23.8" y2="17.5" stroke="#FFC83B" stroke-width="2.4" stroke-linecap="square"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    rect { fill: #D8FF3E; }
+    text { fill: #171717; }
+    @media (prefers-color-scheme: dark) {
+      rect { fill: #171717; }
+      text { fill: #D8FF3E; }
+    }
+  </style>
+  <rect width="32" height="32"/>
+  <text x="16" y="21" font-family="'DM Mono', monospace, -apple-system, sans-serif" font-weight="900" font-size="14" text-anchor="middle">CA</text>
 </svg>

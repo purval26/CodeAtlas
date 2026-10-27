@@ -80,6 +80,17 @@ export default function Home() {
     }
   }, []);
 
+  // Dynamically synchronize tab favicon with current theme
+  useEffect(() => {
+    const iconLinks = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+    const target = isDark ? "/icon-dark.svg" : "/icon-light.svg";
+    iconLinks.forEach((link) => {
+      if (link.href.includes("icon")) {
+        link.href = target;
+      }
+    });
+  }, [isDark]);
+
   const handleToggleTheme = () => {
     setIsDark((prev) => {
       const next = !prev;

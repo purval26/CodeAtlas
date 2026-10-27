@@ -369,7 +369,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               className="btn-primary"
               style={{ minHeight: "32px", padding: "4px 14px", fontSize: "11px", gap: "5px" }}
             >
-              <FolderGit2 size={12} style={{ color: "var(--accent)" }} />
+              <FolderGit2 size={12} style={{ color: "currentColor" }} />
               <span>LOGIN WITH GITHUB</span>
             </button>
           </div>

@@ -262,7 +262,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             title="Sign in with GitHub to analyze private repositories"
           >
-            <FolderGit2 size={13} style={{ color: "var(--accent)" }} />
+            <FolderGit2 size={13} style={{ color: "currentColor" }} />
             <span>{isMobile ? "LOGIN" : "LOGIN GITHUB"}</span>
           </button>
         ) : null}
