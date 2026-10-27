@@ -434,6 +434,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
+  default: BezierCurveEdgeComponent,
   bezier: BezierCurveEdgeComponent,
   smoothstep: CurvedSubwayEdgeComponent,
   obstacleFree: ObstacleFreeEdgeComponent,
@@ -875,7 +876,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: edgeStyle,
+        type: edgeStyle === "bezier" ? "default" : edgeStyle,
         data: {
           svgPath: route?.svgPath || "",
           sourceOffsetY,
@@ -934,6 +935,12 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     [onSelectNode, isMobile, isTablet, layoutResult.positions, graphData.nodes, setCenter]
   );
 
+  const handleFlowError = useCallback((id: string, message: string) => {
+    // Suppress harmless edge fallback warning #011 if it ever occurs
+    if (id === "011") return;
+    console.warn(`[React Flow]: ${message}`);
+  }, []);
+
   const FlowComponent: React.ComponentType<any> = ReactFlow as any;
 
   return (
@@ -946,6 +953,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         edges={initialEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        onError={handleFlowError}
         onNodeClick={onNodeClick}
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
