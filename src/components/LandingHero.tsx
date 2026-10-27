@@ -1,7 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowRight, Compass, Lock, Globe, FolderGit2 } from "lucide-react";
+import {
+  ArrowRight,
+  Compass,
+  Lock,
+  Globe,
+  FolderGit2,
+  GitFork,
+  Cpu,
+  Search,
+  FileCode,
+  Sparkles,
+  Terminal,
+} from "lucide-react";
 import { GOLDEN_DEMO_REPO_URL } from "@/server/shared/constants";
 import { AuthUser, UserRepoItem } from "@/types";
 
@@ -12,6 +24,73 @@ interface LandingHeroProps {
   authUser?: AuthUser | null;
   oauthConfigured?: boolean;
 }
+
+interface FeatureItem {
+  tag: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  badges: string[];
+}
+
+const FEATURES: FeatureItem[] = [
+  {
+    tag: "MODULE 01",
+    title: "Interactive Architecture Graph",
+    description: "Compiles TypeScript and JavaScript ASTs to map exact dependencies, module clusters, and package boundaries with zero hallucinations.",
+    icon: <GitFork size={16} />,
+    badges: ["Pipeline Layout", "Folders Cluster", "Radial View", "Obstacle-Free Routes"],
+  },
+  {
+    tag: "MODULE 02",
+    title: "Trace Flow Execution Paths",
+    description: "Choose any entrypoint and destination file to illuminate the shortest dependency execution path with live animated step-by-step breadcrumbs.",
+    icon: <Compass size={16} />,
+    badges: ["Dijkstra Pathfinding", "Animated Flow", "Call Graph Inspection"],
+  },
+  {
+    tag: "MODULE 03",
+    title: "Grounded AI with Line Citations",
+    description: "Ask architectural questions and receive verifiable answers where every cited file and line range is server-checked against the live AST.",
+    icon: <Sparkles size={16} />,
+    badges: ["Verified Citations", "Click-to-Jump", "Dual-Tier Models"],
+  },
+  {
+    tag: "MODULE 04",
+    title: "Source Viewer & Symbol Outline",
+    description: "Side-by-side code inspection with syntax highlighting, function declarations, class hierarchies, import relations, and inbound callers.",
+    icon: <FileCode size={16} />,
+    badges: ["AST Symbol Hierarchy", "Caller Analysis", "Clickable Line Numbers"],
+  },
+  {
+    tag: "MODULE 05",
+    title: "Instant Fuzzy Semantic Search",
+    description: "Search every file, function, method, and exported symbol in real-time. Selecting any result centers the canvas and opens the source viewer.",
+    icon: <Search size={16} />,
+    badges: ["Token Matching", "Auto-Focus Camera", "Sub-Millisecond Search"],
+  },
+  {
+    tag: "MODULE 06",
+    title: "Multi-Model & Offline Fallback",
+    description: "Use free verified OpenRouter models, bring your own API keys (OpenAI, Gemini, Claude), or run 100% offline with deterministic AST synthesis.",
+    icon: <Cpu size={16} />,
+    badges: ["Free Verified Models", "Custom API Keys", "Zero-Cost Offline Mode"],
+  },
+  {
+    tag: "MODULE 07",
+    title: "Private Repositories & GitHub OAuth",
+    description: "Sign in with GitHub to securely map internal and private repositories. Tokens are handled strictly server-side with zero telemetry.",
+    icon: <Lock size={16} />,
+    badges: ["OAuth 2.0 Integration", "Private Repos", "Organization Access"],
+  },
+  {
+    tag: "MODULE 08",
+    title: "Terminal CLI Packaging",
+    description: "Analyze local offline projects and air-gapped repositories straight from your terminal without uploading code to any cloud service.",
+    icon: <Terminal size={16} />,
+    badges: ["npx codeatlas .", "Local Ingestion", "Air-Gapped Workflows"],
+  },
+];
 
 function cleanRepoInput(raw: string): string {
   return raw
@@ -91,10 +170,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
     >
       <div
         style={{
-          maxWidth: "860px",
+          maxWidth: "960px",
           width: "100%",
-          padding: "20px 0 40px 0",
-          margin: "auto 0",
+          padding: "20px 0 60px 0",
+          margin: "0 auto",
           boxSizing: "border-box",
         }}
       >
@@ -112,7 +191,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           CODEATLAS / REPOSITORY INTELLIGENCE
         </div>
 
-        {/* Focal Heading */}
+        {/* Focal Heading with Accent Highlight */}
         <h1
           style={{
             fontSize: "clamp(36px, 6vw, 92px)",
@@ -125,7 +204,17 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         >
           Understand any<br />
           codebase.<br />
-          <span style={{ color: "var(--muted)" }}>Visually.</span>
+          <span
+            style={{
+              background: "var(--accent)",
+              color: "#11100F",
+              padding: "2px 12px",
+              display: "inline-block",
+              marginTop: "4px",
+            }}
+          >
+            Visually.
+          </span>
         </h1>
 
         {/* Product Thesis */}
@@ -134,7 +223,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             fontSize: "clamp(15px, 2vw, 17px)",
             lineHeight: 1.5,
             color: "var(--ink)",
-            maxWidth: "680px",
+            maxWidth: "720px",
             marginBottom: "28px",
           }}
         >
@@ -397,74 +486,345 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: "10px",
             marginBottom: "36px",
             flexWrap: "wrap",
           }}
         >
           <span
             className="font-mono"
-            style={{ fontSize: "12px", color: "var(--muted)" }}
+            style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", letterSpacing: "0.05em" }}
           >
-            PREPARED DEMO:
+            QUICK DEMOS:
           </span>
           <button
             type="button"
             onClick={handleDemo}
             disabled={isLoading}
+            className="font-mono"
             style={{
               background: "var(--paper)",
               borderColor: "var(--ink)",
-              fontSize: "12px",
+              borderWidth: "1.5px",
+              fontSize: "11px",
+              fontWeight: 800,
               padding: "6px 14px",
               minHeight: "34px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "2px 2px 0px rgba(0,0,0,0.12)",
             }}
           >
-            <Compass size={13} />
-            <span>TRY DEMO REPOSITORY: AUTHFLOW</span>
+            <Compass size={13} style={{ color: "var(--ink)" }} />
+            <span>AUTHFLOW (GOLDEN DEMO)</span>
           </button>
           <button
             type="button"
             onClick={() => handleSelectSample("https://github.com/pmndrs/zustand")}
             disabled={isLoading}
+            className="font-mono"
             style={{
-              background: "var(--paper)",
+              background: "var(--white)",
               borderColor: "var(--border)",
-              fontSize: "12px",
+              fontSize: "11px",
+              fontWeight: 600,
               padding: "6px 12px",
               minHeight: "34px",
             }}
           >
-            <span>ZUSTAND</span>
+            <span>ZUSTAND · STATE</span>
           </button>
           <button
             type="button"
             onClick={() => handleSelectSample("https://github.com/colinhacks/zod")}
             disabled={isLoading}
+            className="font-mono"
             style={{
-              background: "var(--paper)",
+              background: "var(--white)",
               borderColor: "var(--border)",
-              fontSize: "12px",
+              fontSize: "11px",
+              fontWeight: 600,
               padding: "6px 12px",
               minHeight: "34px",
             }}
           >
-            <span>ZOD</span>
+            <span>ZOD · VALIDATION</span>
           </button>
           <button
             type="button"
             onClick={() => handleSelectSample("https://github.com/facebook/react")}
             disabled={isLoading}
+            className="font-mono"
             style={{
-              background: "var(--paper)",
+              background: "var(--white)",
               borderColor: "var(--border)",
-              fontSize: "12px",
+              fontSize: "11px",
+              fontWeight: 600,
               padding: "6px 12px",
               minHeight: "34px",
             }}
           >
-            <span>REACT</span>
+            <span>REACT · UI</span>
           </button>
+        </div>
+
+        {/* Live Architecture & Evidence Teaser Box */}
+        <div
+          style={{
+            border: "2px solid var(--ink)",
+            background: "var(--white)",
+            padding: "20px",
+            marginBottom: "44px",
+            boxShadow: "4px 4px 0px rgba(0,0,0,0.14)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderBottom: "1px solid var(--border)",
+              paddingBottom: "12px",
+              marginBottom: "16px",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span
+                style={{
+                  background: "var(--ink)",
+                  color: "var(--accent)",
+                  padding: "2px 6px",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  fontFamily: "var(--font-dm-mono), monospace",
+                }}
+              >
+                LIVE ARCHITECTURE
+              </span>
+              <span className="font-mono" style={{ fontSize: "12px", fontWeight: 700 }}>
+                src/server/auth/session.ts ➔ src/db/client.ts
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDemo}
+              disabled={isLoading}
+              style={{
+                background: "var(--accent)",
+                color: "#11100F",
+                border: "1px solid var(--ink)",
+                padding: "4px 12px",
+                fontSize: "11px",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              LAUNCH INTERACTIVE DEMO ➔
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "12px",
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--paper)",
+                padding: "12px",
+              }}
+            >
+              <div className="font-mono" style={{ fontSize: "10px", color: "var(--muted)", marginBottom: "4px" }}>
+                01. DETERMINISTIC AST
+              </div>
+              <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "4px" }}>
+                Graph Topology
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.4 }}>
+                Resolves direct imports, exported interfaces, and identifies AuthFlow controller as entrypoint.
+              </div>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--paper)",
+                padding: "12px",
+              }}
+            >
+              <div className="font-mono" style={{ fontSize: "10px", color: "var(--muted)", marginBottom: "4px" }}>
+                02. SHORTEST PATH TRACE
+              </div>
+              <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "4px" }}>
+                Trace Flow Engine
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.4 }}>
+                Traces execution from HTTP router ➔ Middleware ➔ Token Validator ➔ PostgreSQL connection pool.
+              </div>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--paper)",
+                padding: "12px",
+              }}
+            >
+              <div className="font-mono" style={{ fontSize: "10px", color: "var(--muted)", marginBottom: "4px" }}>
+                03. VERIFIED EVIDENCE
+              </div>
+              <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "4px" }}>
+                Grounded Citations
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.4 }}>
+                Every AI answer links to confirmed source lines (<span style={{ textDecoration: "underline" }}>session.ts:L34-L52</span>) in the integrated viewer.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Complete Feature Showcase Grid */}
+        <div style={{ borderTop: "2px solid var(--ink)", paddingTop: "32px", marginBottom: "48px" }}>
+          <div
+            className="font-mono"
+            style={{
+              fontSize: "11px",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              marginBottom: "8px",
+            }}
+          >
+            CAPABILITIES & ARCHITECTURE
+          </div>
+          <h2
+            style={{
+              fontSize: "clamp(24px, 3.5vw, 36px)",
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              marginBottom: "12px",
+              color: "var(--ink)",
+            }}
+          >
+            Engineered for deep repository comprehension.
+          </h2>
+          <p
+            style={{
+              fontSize: "14px",
+              color: "var(--muted)",
+              lineHeight: 1.5,
+              maxWidth: "680px",
+              marginBottom: "28px",
+            }}
+          >
+            Explore how CodeAtlas turns complex repositories into clear, interactive architectural maps with verified line citations.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            {FEATURES.map((feat, idx) => (
+              <div
+                key={idx}
+                style={{
+                  border: "1.5px solid var(--border)",
+                  background: "var(--white)",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        background: "var(--paper)",
+                        border: "1px solid var(--border)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--ink)",
+                      }}
+                    >
+                      {feat.icon}
+                    </div>
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        color: "var(--muted)",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {feat.tag}
+                    </span>
+                  </div>
+
+                  <h3
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: 800,
+                      marginBottom: "6px",
+                      letterSpacing: "-0.02em",
+                      color: "var(--ink)",
+                    }}
+                  >
+                    {feat.title}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      color: "var(--muted)",
+                      lineHeight: 1.45,
+                      marginBottom: "14px",
+                    }}
+                  >
+                    {feat.description}
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                  {feat.badges.map((badge, bIdx) => (
+                    <span
+                      key={bIdx}
+                      className="font-mono"
+                      style={{
+                        fontSize: "9px",
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        background: "var(--paper)",
+                        color: "var(--ink)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Core Principles Section */}
