@@ -936,10 +936,13 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   );
 
   const handleFlowError = useCallback((id: string, message: string) => {
-    // Suppress harmless edge fallback warning #011 if it ever occurs
-    if (id === "011") return;
+    // Suppress harmless edge fallback warning #011 and HMR type-identity warning #002
+    if (id === "011" || id === "002") return;
     console.warn(`[React Flow]: ${message}`);
   }, []);
+
+  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+  const memoizedEdgeTypes = useMemo(() => edgeTypes, []);
 
   const FlowComponent: React.ComponentType<any> = ReactFlow as any;
 
@@ -951,8 +954,8 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
       <FlowComponent
         nodes={initialNodes}
         edges={initialEdges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
+        nodeTypes={memoizedNodeTypes}
+        edgeTypes={memoizedEdgeTypes}
         onError={handleFlowError}
         onNodeClick={onNodeClick}
         onNodeMouseEnter={handleNodeMouseEnter}
