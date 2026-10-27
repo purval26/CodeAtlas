@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { repositoryId, question, mode, model, reasoningEffort } = body;
+    const { repositoryId, question, mode, model } = body;
 
     if (!repositoryId || !question) {
       return NextResponse.json(
@@ -66,6 +66,58 @@ export async function POST(request: Request) {
     );
 
     const targetMode: "free" | "paid" = mode === "paid" ? "paid" : "free";
+
+    const isStream =
+      body.stream === true ||
+      request.headers.get("accept")?.includes("text/event-stream");
+
+    if (isStream) {
+      const encoder = new TextEncoder();
+      const customStream = new ReadableStream({
+        async start(controller) {
+          try {
+            const response = await llmAdapter.askQuestionStream(
+              question,
+              retrieval,
+              repoData.parsedFiles,
+              {
+                mode: targetMode,
+                model: model ? String(model) : undefined,
+              },
+              (token: string) => {
+                controller.enqueue(
+                  encoder.encode(`event: token\ndata: ${JSON.stringify({ token })}\n\n`)
+                );
+              }
+            );
+
+            controller.enqueue(
+              encoder.encode(`event: done\ndata: ${JSON.stringify(response)}\n\n`)
+            );
+            controller.close();
+          } catch (err: any) {
+            console.error("Ask stream error:", err);
+            controller.enqueue(
+              encoder.encode(
+                `event: error\ndata: ${JSON.stringify({
+                  error: err.message || "Internal error processing question stream.",
+                })}\n\n`
+              )
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(customStream, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
 
     const response = await llmAdapter.askQuestion(
       question,
