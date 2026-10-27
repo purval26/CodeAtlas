@@ -183,15 +183,25 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Mobile & Touch Responsiveness */
+select {
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
 @media (max-width: 767px) {
-  button {
+  button:not([style*="height"]):not([style*="min-height"]):not([style*="minHeight"]) {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  select:not([style*="height"]):not([style*="min-height"]):not([style*="minHeight"]) {
     min-height: 44px;
     font-size: 13px;
   }
 
   .react-flow__controls-button {
-    min-height: 44px !important;
-    min-width: 44px !important;
+    min-height: 40px !important;
+    min-width: 40px !important;
   }
 }
 

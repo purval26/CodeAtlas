@@ -297,7 +297,8 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 title={`Back to ${fileHistory[fileHistory.length - 1]}`}
                 style={{
                   padding: "4px 8px",
-                  minHeight: "28px",
+                  height: "32px",
+                  minHeight: "32px",
                   fontSize: "11px",
                   display: "flex",
                   alignItems: "center",
@@ -306,6 +307,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                   color: activeTheme.colors.text,
                   borderColor: activeTheme.colors.border,
                   flexShrink: 0,
+                  boxSizing: "border-box",
                 }}
               >
                 <ArrowLeft size={13} />
@@ -366,7 +368,16 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
           </div>
 
           {/* Controls: Search Toggle, Theme, Copy, Close */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              flexShrink: 0,
+              overflowX: "auto",
+              paddingBottom: "1px",
+            }}
+          >
             {/* Find Button */}
             <button
               onClick={() => {
@@ -380,30 +391,35 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               }}
               title="Find in file (Ctrl+F)"
               style={{
-                padding: "4px 8px",
-                minHeight: "28px",
+                padding: "0 10px",
+                height: "32px",
+                minHeight: "32px",
                 fontSize: "11px",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "5px",
                 background: isSearchOpen ? activeTheme.colors.statusBarBg : activeTheme.colors.bg,
                 color: isSearchOpen ? activeTheme.colors.statusBarText : activeTheme.colors.text,
                 borderColor: activeTheme.colors.border,
+                boxSizing: "border-box",
               }}
             >
-              <Search size={12} />
+              <Search size={13} />
               <span>FIND</span>
             </button>
 
             {/* VS Code Theme Dropdown */}
             <div
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: "5px",
                 background: activeTheme.colors.bg,
                 border: `1px solid ${activeTheme.colors.border}`,
-                padding: "2px 6px",
+                padding: "0 8px",
+                height: "32px",
+                minHeight: "32px",
+                boxSizing: "border-box",
               }}
             >
               <Palette size={12} style={{ color: activeTheme.colors.fn, flexShrink: 0 }} />
@@ -434,6 +450,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                   cursor: "pointer",
                   outline: "none",
                   fontWeight: 600,
+                  height: "100%",
                 }}
               >
                 {VSCODE_THEMES.map((theme) => (
@@ -456,15 +473,17 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               onClick={handleCopy}
               title="Copy file contents"
               style={{
-                padding: "4px 8px",
-                minHeight: "28px",
+                padding: "0 10px",
+                height: "32px",
+                minHeight: "32px",
                 fontSize: "11px",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "5px",
                 background: activeTheme.colors.bg,
                 color: activeTheme.colors.text,
                 borderColor: activeTheme.colors.border,
+                boxSizing: "border-box",
               }}
             >
               {copied ? <Check size={12} style={{ color: "#4EC9B0" }} /> : <Copy size={12} />}
@@ -475,15 +494,17 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             <button
               onClick={onClose}
               style={{
-                padding: "4px 8px",
-                minHeight: "28px",
+                padding: "0 10px",
+                height: "32px",
+                minHeight: "32px",
                 fontSize: "11px",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "5px",
                 background: activeTheme.colors.bg,
                 color: activeTheme.colors.text,
                 borderColor: activeTheme.colors.border,
+                boxSizing: "border-box",
               }}
             >
               <X size={14} />
@@ -537,10 +558,13 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                   background: activeTheme.colors.bg,
                   color: activeTheme.colors.text,
                   border: `1px solid ${activeTheme.colors.border}`,
-                  padding: "4px 8px",
+                  padding: "0 8px",
                   fontSize: "12px",
                   width: "180px",
+                  height: "28px",
+                  minHeight: "28px",
                   outline: "none",
+                  boxSizing: "border-box",
                 }}
               />
 
@@ -571,13 +595,15 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 onClick={() => setMatchCase((prev) => !prev)}
                 title="Match Case (Alt+C)"
                 style={{
-                  padding: "2px 6px",
-                  minHeight: "24px",
+                  padding: "0 8px",
+                  height: "28px",
+                  minHeight: "28px",
                   fontSize: "10px",
                   fontFamily: "var(--font-dm-mono), monospace",
                   background: matchCase ? activeTheme.colors.statusBarBg : activeTheme.colors.bg,
                   color: matchCase ? activeTheme.colors.statusBarText : activeTheme.colors.text,
                   borderColor: matchCase ? activeTheme.colors.statusBarBg : activeTheme.colors.border,
+                  boxSizing: "border-box",
                 }}
               >
                 Aa
@@ -590,12 +616,14 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 disabled={matches.length === 0}
                 title="Previous Match (Shift+Enter)"
                 style={{
-                  padding: "2px 6px",
-                  minHeight: "24px",
+                  padding: "0 6px",
+                  height: "28px",
+                  minHeight: "28px",
                   background: activeTheme.colors.bg,
                   color: activeTheme.colors.text,
                   borderColor: activeTheme.colors.border,
                   opacity: matches.length === 0 ? 0.4 : 1,
+                  boxSizing: "border-box",
                 }}
               >
                 <ChevronUp size={13} />
@@ -608,12 +636,14 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 disabled={matches.length === 0}
                 title="Next Match (Enter)"
                 style={{
-                  padding: "2px 6px",
-                  minHeight: "24px",
+                  padding: "0 6px",
+                  height: "28px",
+                  minHeight: "28px",
                   background: activeTheme.colors.bg,
                   color: activeTheme.colors.text,
                   borderColor: activeTheme.colors.border,
                   opacity: matches.length === 0 ? 0.4 : 1,
+                  boxSizing: "border-box",
                 }}
               >
                 <ChevronDown size={13} />
@@ -625,11 +655,13 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 onClick={() => setIsSearchOpen(false)}
                 title="Close (Escape)"
                 style={{
-                  padding: "2px 6px",
-                  minHeight: "24px",
+                  padding: "0 6px",
+                  height: "28px",
+                  minHeight: "28px",
                   background: "transparent",
                   border: "none",
                   color: activeTheme.colors.gutterText,
+                  boxSizing: "border-box",
                 }}
               >
                 <X size={13} />

@@ -232,10 +232,15 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               onClick={onClose}
               aria-label="Close Explorer"
               style={{
-                padding: "2px 8px",
-                minHeight: "28px",
+                padding: "0 10px",
+                height: "32px",
+                minHeight: "32px",
                 fontSize: "11px",
                 border: "1px solid var(--border)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
               }}
             >
               <X size={13} />
@@ -253,10 +258,13 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             gap: "6px",
             background: "var(--paper)",
             border: "1px solid var(--border)",
-            padding: "2px 8px",
+            padding: "0 8px",
+            height: "34px",
+            minHeight: "34px",
+            boxSizing: "border-box",
           }}
         >
-          <Search size={13} style={{ color: "var(--muted)" }} />
+          <Search size={13} style={{ color: "var(--muted)", flexShrink: 0 }} />
           <input
             type="text"
             placeholder="Filter files..."
@@ -265,10 +273,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             onChange={(e) => setFilter(e.target.value)}
             style={{
               width: "100%",
-              padding: "6px 2px",
+              height: "100%",
+              padding: "0 4px",
               fontSize: "12px",
               border: "none",
               background: "transparent",
+              outline: "none",
             }}
           />
           {filter && (

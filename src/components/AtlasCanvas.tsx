@@ -960,15 +960,17 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
                 background: selectedNodeId ? "var(--accent)" : "var(--white)",
                 color: selectedNodeId ? "#11100F" : "var(--ink)",
                 border: "1px solid var(--border)",
-                padding: "6px 10px",
+                padding: "0 10px",
                 fontSize: "11px",
                 fontFamily: "'DM Mono', monospace",
                 fontWeight: 700,
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: "5px",
                 cursor: "pointer",
-                minHeight: "32px",
+                height: "34px",
+                minHeight: "34px",
+                boxSizing: "border-box",
                 transition: "background 0.15s ease, color 0.15s ease",
               }}
             >
@@ -984,21 +986,23 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
                 background: "var(--white)",
                 color: "var(--ink)",
                 border: "1px solid var(--border)",
-                padding: "6px 10px",
+                padding: "0 10px",
                 fontSize: "11px",
                 fontFamily: "'DM Mono', monospace",
                 fontWeight: 700,
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: "5px",
                 cursor: "pointer",
-                minHeight: "32px",
+                height: "34px",
+                minHeight: "34px",
+                boxSizing: "border-box",
               }}
             >
               <Maximize2 size={13} />
               <span>FIT GRAPH</span>
             </button>
-            <div style={{ display: "flex", gap: "2px" }}>
+            <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
               <button
                 type="button"
                 onClick={() => zoomIn({ duration: 200 })}
@@ -1008,15 +1012,17 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
                   background: "var(--white)",
                   color: "var(--ink)",
                   border: "1px solid var(--border)",
-                  padding: "6px 8px",
+                  padding: "0 8px",
                   fontSize: "14px",
                   fontWeight: 700,
                   cursor: "pointer",
-                  minHeight: "32px",
-                  minWidth: "30px",
-                  display: "flex",
+                  height: "34px",
+                  minHeight: "34px",
+                  minWidth: "32px",
+                  display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  boxSizing: "border-box",
                 }}
               >
                 +
@@ -1030,15 +1036,17 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
                   background: "var(--white)",
                   color: "var(--ink)",
                   border: "1px solid var(--border)",
-                  padding: "6px 8px",
+                  padding: "0 8px",
                   fontSize: "14px",
                   fontWeight: 700,
                   cursor: "pointer",
-                  minHeight: "32px",
-                  minWidth: "30px",
-                  display: "flex",
+                  height: "34px",
+                  minHeight: "34px",
+                  minWidth: "32px",
+                  display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  boxSizing: "border-box",
                 }}
               >
                 −

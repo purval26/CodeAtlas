@@ -113,10 +113,15 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
               onClick={onClose}
               aria-label="Close Inspector"
               style={{
-                padding: "2px 8px",
-                minHeight: "28px",
+                padding: "0 10px",
+                height: "32px",
+                minHeight: "32px",
                 fontSize: "11px",
                 border: "1px solid var(--border)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
               }}
             >
               <X size={13} />
@@ -153,7 +158,7 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
             <button
               onClick={() => onOpenSource(selectedNode.path!)}
               className="btn-primary"
-              style={{ fontSize: "11px", padding: "6px 14px", minHeight: "34px", width: "100%" }}
+              style={{ fontSize: "11px", padding: "6px 14px", height: "36px", minHeight: "36px", width: "100%", boxSizing: "border-box" }}
             >
               <FileText size={13} />
               <span>VIEW SOURCE</span>

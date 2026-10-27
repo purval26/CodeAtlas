@@ -146,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     onClick={onOpenTrace}
                     title="Shortest path dependency analysis"
-                    style={{ minHeight: "36px", padding: "6px 12px", fontSize: "12px" }}
+                    style={{ height: "36px", minHeight: "36px", padding: "6px 12px", fontSize: "12px", boxSizing: "border-box" }}
                   >
                     <GitFork size={13} />
                     <span>TRACE</span>
@@ -157,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={onOpenAsk}
                     className="btn-primary"
                     title="Grounded Codebase Q&A"
-                    style={{ minHeight: "36px", padding: "6px 14px", fontSize: "12px" }}
+                    style={{ height: "36px", minHeight: "36px", padding: "6px 14px", fontSize: "12px", boxSizing: "border-box" }}
                   >
                     <MessageSquare size={13} />
                     <span>ASK</span>
@@ -171,9 +171,11 @@ export const Header: React.FC<HeaderProps> = ({
               title="Analyze another repository"
               aria-label="New repository"
               style={{
+                height: "36px",
                 minHeight: "36px",
                 padding: isMobile ? "6px 10px" : "6px 12px",
                 fontSize: "12px",
+                boxSizing: "border-box",
               }}
             >
               <RefreshCw size={13} />
@@ -185,9 +187,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onLoadDemo}
             className="btn-primary"
             style={{
+              height: "36px",
               minHeight: "36px",
               padding: isMobile ? "6px 10px" : "6px 14px",
               fontSize: "12px",
+              boxSizing: "border-box",
             }}
           >
             <Compass size={13} />
@@ -202,10 +206,11 @@ export const Header: React.FC<HeaderProps> = ({
               src={authUser.avatarUrl}
               alt={authUser.login}
               style={{
-                width: "28px",
-                height: "28px",
+                width: "36px",
+                height: "36px",
                 border: "1.5px solid var(--border)",
                 objectFit: "cover",
+                boxSizing: "border-box",
               }}
               title={`Logged in as ${authUser.login}`}
             />
@@ -230,7 +235,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={onLogout}
                 title="Log out from GitHub"
                 aria-label="Logout"
-                style={{ padding: "4px 8px", minHeight: "34px", fontSize: "11px", gap: "4px" }}
+                style={{ height: "36px", minHeight: "36px", padding: "6px 10px", fontSize: "11px", gap: "4px", boxSizing: "border-box" }}
               >
                 <LogOut size={12} />
                 {!isMobile && <span>LOGOUT</span>}
@@ -244,12 +249,14 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             style={{
               padding: isMobile ? "6px 10px" : "6px 12px",
+              height: "36px",
               minHeight: "36px",
               fontSize: "11px",
               gap: "5px",
               background: "var(--ink)",
               color: "var(--white)",
               border: "1.5px solid var(--ink)",
+              boxSizing: "border-box",
             }}
             title="Sign in with GitHub to analyze private repositories"
           >
@@ -261,7 +268,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Theme toggle */}
         <button
           onClick={onToggleTheme}
-          style={{ width: "38px", minHeight: "36px", padding: "0" }}
+          style={{ width: "36px", height: "36px", minHeight: "36px", padding: "0", boxSizing: "border-box" }}
           aria-label={`Switch to ${isDark ? "Light" : "Dark"} mode`}
           title={`Switch to ${isDark ? "Light" : "Dark"} mode`}
         >

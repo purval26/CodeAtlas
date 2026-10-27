@@ -374,13 +374,17 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                 onClick={handleNewChat}
                 aria-label="Start new question"
                 style={{
-                  padding: "2px 8px",
-                  minHeight: "26px",
+                  padding: "0 10px",
+                  height: "30px",
+                  minHeight: "30px",
                   fontSize: "11px",
                   gap: "4px",
                   fontFamily: "'DM Mono', monospace",
                   fontWeight: 800,
                   background: "var(--paper)",
+                  boxSizing: "border-box",
+                  display: "inline-flex",
+                  alignItems: "center",
                 }}
               >
                 <PlusCircle size={11} />
@@ -390,7 +394,16 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
             <button
               onClick={onClose}
               aria-label="Close Ask CodeAtlas"
-              style={{ padding: "3px 8px", minHeight: "26px", fontSize: "11px", gap: "4px" }}
+              style={{
+                padding: "0 10px",
+                height: "30px",
+                minHeight: "30px",
+                fontSize: "11px",
+                gap: "4px",
+                boxSizing: "border-box",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
             >
               <X size={13} />
               <span>CLOSE</span>
@@ -1049,15 +1062,19 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
               }}
             >
               {/* Left side: Mode toggle & Model select */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", flex: 1, minWidth: "220px" }}>
                 {/* Mode Toggle Button Group */}
                 <div
                   style={{
                     display: "inline-flex",
+                    alignItems: "center",
                     background: "var(--paper)",
                     border: "1px solid var(--border)",
-                    padding: "1px",
+                    padding: "2px",
                     gap: "2px",
+                    height: "32px",
+                    minHeight: "32px",
+                    boxSizing: "border-box",
                   }}
                 >
                   <button
@@ -1069,18 +1086,20 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                       background: aiMode === "free" ? "var(--ink)" : "transparent",
                       color: aiMode === "free" ? "var(--white)" : "var(--ink)",
                       border: "none",
-                      padding: "2px 7px",
-                      fontSize: "10px",
+                      padding: "0 8px",
+                      fontSize: "11px",
                       fontWeight: 800,
                       fontFamily: "'DM Mono', monospace",
                       cursor: "pointer",
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      gap: "3px",
-                      minHeight: "22px",
+                      gap: "4px",
+                      height: "100%",
+                      minHeight: "100%",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <Zap size={10} style={{ color: aiMode === "free" ? "var(--accent)" : "inherit" }} />
+                    <Zap size={11} style={{ color: aiMode === "free" ? "var(--accent)" : "inherit" }} />
                     <span>FREE</span>
                   </button>
                   <button
@@ -1092,18 +1111,20 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                       background: aiMode === "paid" ? "var(--accent)" : "transparent",
                       color: "#11100F",
                       border: "none",
-                      padding: "2px 7px",
-                      fontSize: "10px",
+                      padding: "0 8px",
+                      fontSize: "11px",
                       fontWeight: 800,
                       fontFamily: "'DM Mono', monospace",
                       cursor: "pointer",
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      gap: "3px",
-                      minHeight: "22px",
+                      gap: "4px",
+                      height: "100%",
+                      minHeight: "100%",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <Sparkles size={10} />
+                    <Sparkles size={11} />
                     <span>PAID</span>
                   </button>
                 </div>
@@ -1117,7 +1138,7 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                   aria-label="Choose Model"
                   className="font-mono"
                   style={{
-                    padding: "2px 6px",
+                    padding: "0 10px",
                     fontSize: "11px",
                     fontWeight: 700,
                     border: "1px solid var(--border)",
@@ -1126,7 +1147,9 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                     outline: "none",
                     cursor: "pointer",
                     maxWidth: "280px",
-                    height: "24px",
+                    height: "32px",
+                    minHeight: "32px",
+                    boxSizing: "border-box",
                   }}
                 >
                   <optgroup label="FREE MODELS (OpenRouter)">
@@ -1161,8 +1184,9 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                     background: question.trim() && !loading ? "var(--ink)" : "var(--paper)",
                     color: question.trim() && !loading ? "var(--accent)" : "var(--muted)",
                     border: "1.5px solid var(--ink)",
-                    padding: "4px 14px",
-                    minHeight: "28px",
+                    padding: "0 16px",
+                    height: "32px",
+                    minHeight: "32px",
                     fontSize: "11px",
                     fontWeight: 800,
                     fontFamily: "'DM Mono', monospace",
@@ -1171,6 +1195,7 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                     gap: "5px",
                     cursor: question.trim() && !loading ? "pointer" : "not-allowed",
                     transition: "all 0.15s ease",
+                    boxSizing: "border-box",
                   }}
                 >
                   <span>{loading ? "ANALYZING..." : "SEND"}</span>

@@ -390,9 +390,11 @@ export default function Home() {
                         style={{
                           background: isTabletExplorerOpen ? "var(--accent)" : "var(--paper)",
                           color: isTabletExplorerOpen ? "#11100F" : "var(--ink)",
+                          height: "36px",
                           minHeight: "36px",
                           padding: "6px 12px",
                           fontSize: "11px",
+                          boxSizing: "border-box",
                         }}
                       >
                         <Folder size={13} />
@@ -403,9 +405,11 @@ export default function Home() {
                         style={{
                           background: isTabletInspectorOpen ? "var(--accent)" : "var(--paper)",
                           color: isTabletInspectorOpen ? "#11100F" : "var(--ink)",
+                          height: "36px",
                           minHeight: "36px",
                           padding: "6px 12px",
                           fontSize: "11px",
+                          boxSizing: "border-box",
                         }}
                       >
                         <Info size={13} />
@@ -507,14 +511,16 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: "6px", flexShrink: 0, alignItems: "center" }}>
                       {selectedNode?.path && (
                         <button
                           onClick={() => handleOpenSource(selectedNode.path!)}
                           style={{
-                            padding: "4px 8px",
-                            minHeight: "34px",
+                            padding: "6px 10px",
+                            height: "36px",
+                            minHeight: "36px",
                             fontSize: "11px",
+                            boxSizing: "border-box",
                           }}
                         >
                           <FileText size={12} />
@@ -525,9 +531,11 @@ export default function Home() {
                         onClick={() => setIsMobileInspectorOpen(true)}
                         className={selectedNode ? "btn-primary" : ""}
                         style={{
-                          padding: "4px 10px",
-                          minHeight: "34px",
+                          padding: "6px 12px",
+                          height: "36px",
+                          minHeight: "36px",
                           fontSize: "11px",
+                          boxSizing: "border-box",
                         }}
                       >
                         <Info size={12} />
@@ -553,11 +561,13 @@ export default function Home() {
                       style={{
                         border: "none",
                         borderRight: "1px solid var(--border)",
-                        minHeight: "48px",
+                        height: "50px",
+                        minHeight: "50px",
                         flexDirection: "column",
                         padding: "6px 2px",
                         gap: "2px",
                         fontSize: "10px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <Folder size={16} />
@@ -569,11 +579,13 @@ export default function Home() {
                       style={{
                         border: "none",
                         borderRight: "1px solid var(--border)",
-                        minHeight: "48px",
+                        height: "50px",
+                        minHeight: "50px",
                         flexDirection: "column",
                         padding: "6px 2px",
                         gap: "2px",
                         fontSize: "10px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <Info size={16} />
@@ -588,11 +600,13 @@ export default function Home() {
                       style={{
                         border: "none",
                         borderRight: "1px solid var(--border)",
-                        minHeight: "48px",
+                        height: "50px",
+                        minHeight: "50px",
                         flexDirection: "column",
                         padding: "6px 2px",
                         gap: "2px",
                         fontSize: "10px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <GitFork size={16} />
@@ -604,11 +618,13 @@ export default function Home() {
                       className="btn-primary"
                       style={{
                         border: "none",
-                        minHeight: "48px",
+                        height: "50px",
+                        minHeight: "50px",
                         flexDirection: "column",
                         padding: "6px 2px",
                         gap: "2px",
                         fontSize: "10px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <MessageSquare size={16} />

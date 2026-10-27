@@ -161,7 +161,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close Trace Flow"
-            style={{ padding: "6px 12px", minHeight: "36px", fontSize: "12px" }}
+            style={{ padding: "6px 12px", height: "36px", minHeight: "36px", fontSize: "12px", boxSizing: "border-box" }}
           >
             <X size={14} />
           </button>
@@ -174,7 +174,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
             <button
               type="button"
               onClick={handleSetGoldenDemo}
-              style={{ fontSize: "11px", padding: "6px 12px", minHeight: "32px" }}
+              style={{ fontSize: "11px", padding: "6px 12px", height: "36px", minHeight: "36px", boxSizing: "border-box" }}
             >
               <Compass size={13} />
               <span>PRESET: LOGIN → PROTECTED ROUTE</span>
@@ -205,7 +205,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
                 value={startId}
                 onChange={(e) => setStartId(e.target.value)}
                 aria-label="Start component"
-                style={{ width: "100%", padding: "10px", minHeight: "44px" }}
+                style={{ width: "100%", padding: "10px", height: "44px", minHeight: "44px", boxSizing: "border-box" }}
               >
                 {fileNodes.map((n) => (
                   <option key={n.id} value={n.id}>
@@ -231,7 +231,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
                 value={endId}
                 onChange={(e) => setEndId(e.target.value)}
                 aria-label="End component"
-                style={{ width: "100%", padding: "10px", minHeight: "44px" }}
+                style={{ width: "100%", padding: "10px", height: "44px", minHeight: "44px", boxSizing: "border-box" }}
               >
                 {fileNodes.map((n) => (
                   <option key={n.id} value={n.id}>
@@ -247,7 +247,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
               onClick={handleCompute}
               className="btn-primary"
               disabled={loading || !startId || !endId}
-              style={{ width: "100%", minHeight: "44px" }}
+              style={{ width: "100%", height: "44px", minHeight: "44px", boxSizing: "border-box" }}
             >
               <GitFork size={14} />
               <span>{loading ? "CALCULATING..." : "TRACE FLOW"}</span>
