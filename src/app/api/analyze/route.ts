@@ -1,99 +1,43 @@
 import { NextResponse } from "next/server";
-import { parseGitHubUrl } from "@/lib/github-url";
-
-export interface AnalysisJob {
-  id: string;
-  status:
-    | "queued"
-    | "fetching"
-    | "indexing"
-    | "parsing"
-    | "resolving"
-    | "graphing"
-    | "completed"
-    | "failed";
-  progress: number;
-  stageName: string;
-  repositoryId?: string;
-  repository?: {
-    owner: string;
-    name: string;
-    url: string;
-    branch: string;
-  };
-  fileCount?: number;
-  error?: string;
-  createdAt: string;
-}
-
-// In-memory job registry for development / fast prototype verification
-const jobs = new Map<string, AnalysisJob>();
-
-export function getJob(jobId: string): AnalysisJob | undefined {
-  return jobs.get(jobId);
-}
-
-export function updateJob(jobId: string, updates: Partial<AnalysisJob>): AnalysisJob | undefined {
-  const current = jobs.get(jobId);
-  if (!current) return undefined;
-  const updated = { ...current, ...updates };
-  jobs.set(jobId, updated);
-  return updated;
-}
+import { jobManager } from "@/server/jobs";
+import { parseGitHubUrl } from "@/server/ingestion/github";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const parseResult = parseGitHubUrl(body?.url);
+    const url = body?.url;
 
-    if (!parseResult.valid) {
+    if (!url || typeof url !== "string") {
       return NextResponse.json(
-        {
-          error: "INVALID_REPOSITORY",
-          message: parseResult.error,
-        },
+        { error: "BAD_REQUEST", message: "Repository URL is required." },
         { status: 400 }
       );
     }
 
-    const { owner, repo, normalizedUrl } = parseResult.data;
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const repositoryId = `repo_${owner}_${repo}`.toLowerCase();
+    try {
+      parseGitHubUrl(url);
+    } catch (parseErr: any) {
+      return NextResponse.json(
+        { error: "INVALID_URL", message: parseErr.message },
+        { status: 400 }
+      );
+    }
 
-    const job: AnalysisJob = {
-      id: jobId,
-      status: "queued",
-      progress: 5,
-      stageName: "01 QUEUED",
-      repositoryId,
-      repository: {
-        owner,
-        name: repo,
-        url: normalizedUrl,
-        branch: "main",
-      },
-      createdAt: new Date().toISOString(),
-    };
-
-    jobs.set(jobId, job);
+    const job = jobManager.createJob(url);
 
     return NextResponse.json(
       {
-        jobId,
+        jobId: job.id,
         status: job.status,
-        repository: job.repository,
-        stage: job.stageName,
+        progress: job.progress,
+        stage: job.stage,
       },
       { status: 202 }
     );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to parse request payload";
+  } catch (err: any) {
     return NextResponse.json(
-      {
-        error: "BAD_REQUEST",
-        message,
-      },
-      { status: 400 }
+      { error: "SERVER_ERROR", message: err.message || "Failed to start analysis." },
+      { status: 500 }
     );
   }
 }

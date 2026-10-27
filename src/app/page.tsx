@@ -63,37 +63,15 @@ export default function Home() {
         throw new Error(data.message || "Failed to start repository analysis.");
       }
 
-      const newJob: AnalysisJob = {
+      const initialJob: AnalysisJob = {
         id: data.jobId,
-        status: "fetching",
-        progress: 15,
-        stage: "01 FETCH REPOSITORY: Initializing...",
+        status: data.status || "queued",
+        progress: data.progress || 5,
+        stage: data.stage || "01 FETCH REPOSITORY: Initializing...",
         url,
         createdAt: new Date().toISOString(),
       };
-      setActiveJob(newJob);
-
-      // Simulated pipeline progression matching the prototype
-      const stages: { status: AnalysisJob["status"]; progress: number; stage: string }[] = [
-        { status: "fetching", progress: 20, stage: "01 FETCH REPOSITORY: Cloning tree..." },
-        { status: "indexing", progress: 40, stage: "02 INDEX FILES: Filtering supported JS/TS files..." },
-        { status: "parsing", progress: 65, stage: "03 PARSE AST: Extracting syntax & symbols..." },
-        { status: "resolving", progress: 85, stage: "04 RESOLVE DEPENDENCIES: Resolving path aliases..." },
-        { status: "graphing", progress: 95, stage: "05 BUILD ATLAS: Constructing graph..." },
-        { status: "completed", progress: 100, stage: "06 COMPLETE: Atlas ready" },
-      ];
-
-      let step = 0;
-      const interval = setInterval(() => {
-        step++;
-        if (step < stages.length) {
-          const s = stages[step];
-          setActiveJob((prev) => (prev ? { ...prev, ...s } : null));
-        } else {
-          clearInterval(interval);
-          setIsAnalyzing(false);
-        }
-      }, 950);
+      setActiveJob(initialJob);
     } catch (err: unknown) {
       setIsAnalyzing(false);
       const msg = err instanceof Error ? err.message : "Error analyzing repository.";
@@ -101,6 +79,44 @@ export default function Home() {
       setActiveJob(null);
     }
   };
+
+  // Live polling for actual analysis job progress
+  useEffect(() => {
+    if (!activeJob || activeJob.status === "completed" || activeJob.status === "failed") {
+      setIsAnalyzing(false);
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const jobId = activeJob.id;
+        const res = await fetch(`/api/analyze/${jobId}`);
+        if (!res.ok) return;
+
+        const updatedJob: AnalysisJob = await res.json();
+        setActiveJob(updatedJob);
+
+        if (updatedJob.status === "completed" && updatedJob.repositoryId) {
+          clearInterval(interval);
+          setIsAnalyzing(false);
+
+          // Fetch deterministic graph data
+          const graphRes = await fetch(`/api/graph/${updatedJob.repositoryId}`);
+          if (graphRes.ok) {
+            const graph: GraphData = await graphRes.json();
+            setGraphData(graph);
+          }
+        } else if (updatedJob.status === "failed") {
+          clearInterval(interval);
+          setIsAnalyzing(false);
+        }
+      } catch (pollErr) {
+        console.error("Job poll error:", pollErr);
+      }
+    }, 600);
+
+    return () => clearInterval(interval);
+  }, [activeJob?.id, activeJob?.status]);
 
   return (
     <div
@@ -160,12 +176,11 @@ export default function Home() {
           >
             <div
               style={{
-                maxWidth: "600px",
+                maxWidth: "680px",
                 width: "100%",
                 border: "2px solid var(--border)",
                 background: "var(--white)",
                 padding: "36px",
-                textAlign: "center",
               }}
             >
               <div
@@ -182,19 +197,79 @@ export default function Home() {
               >
                 ANALYSIS COMPLETE ✓
               </div>
-              <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px" }}>
-                Repository Successfully Mapped
+
+              <h2
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  letterSpacing: "-0.04em",
+                  marginBottom: "12px",
+                  color: "var(--ink)",
+                }}
+              >
+                {graphData?.repository.name || "Repository"} Mapped Successfully
               </h2>
-              <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "24px" }}>
-                The AST dependency graph and bounded evidence index are compiled and ready.
+
+              <p
+                style={{
+                  color: "var(--muted)",
+                  fontSize: "14px",
+                  marginBottom: "24px",
+                  lineHeight: 1.5,
+                }}
+              >
+                AST dependency graph compiled deterministically. All local imports and tsconfig path aliases resolved with real source lines indexed.
               </p>
-              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+
+              {graphData && (
+                <div
+                  className="font-mono"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: "12px",
+                    border: "1px solid var(--border)",
+                    background: "var(--paper)",
+                    padding: "16px",
+                    marginBottom: "24px",
+                    textAlign: "center",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--muted)" }}>FILES</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800 }}>
+                      {graphData.stats.totalFiles}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--muted)" }}>PACKAGES</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800 }}>
+                      {graphData.stats.totalPackages}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--muted)" }}>IMPORTS</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800 }}>
+                      {graphData.stats.totalImports}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--muted)" }}>LINES</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800 }}>
+                      {graphData.stats.totalLines}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={handleReset}
+                  className="btn-primary"
                   style={{ minHeight: "44px", padding: "8px 20px" }}
                 >
-                  ANALYZE ANOTHER
+                  ANALYZE ANOTHER REPOSITORY
                 </button>
               </div>
             </div>
