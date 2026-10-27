@@ -18,7 +18,7 @@ import ReactFlow, {
   getSmoothStepPath,
   getStraightPath,
 } from "reactflow";
-import { GraphData, GraphLayoutMode, GraphEdgeStyle } from "@/types";
+import { GraphData, GraphLayoutMode, GraphEdgeStyle, EdgeDensityMode } from "@/types";
 import {
   computeGraphLayout,
   computeDependencyLayout,
@@ -214,7 +214,13 @@ const FileNodeComponent = ({ data, selected }: NodeProps) => {
         }}
       >
         <span>{data.lineCount !== undefined ? `${data.lineCount} L` : ""}</span>
-        <span>{data.exportsCount ? `${data.exportsCount} EXP` : ""}</span>
+        <span>
+          {data.incomingCount !== undefined && data.outgoingCount !== undefined
+            ? `↓${data.incomingCount} ↑${data.outgoingCount}`
+            : data.exportsCount
+            ? `${data.exportsCount} EXP`
+            : ""}
+        </span>
       </div>
     </div>
   );
@@ -304,7 +310,7 @@ const ObstacleFreeEdgeComponent = ({ id, style, markerEnd, data }: EdgeProps) =>
   );
 };
 
-// Smooth Bezier S-Curve Edge (Recommended)
+// Smooth Bezier S-Curve Edge with handle slot staggering & distance-adaptive curvature
 const BezierCurveEdgeComponent = ({
   id,
   sourceX,
@@ -317,20 +323,29 @@ const BezierCurveEdgeComponent = ({
   markerEnd,
   data,
 }: EdgeProps) => {
+  // Apply staggered port offsets so parallel edges don't clamp into a single pixel
+  const srcY = sourceY + (data?.sourceOffsetY || 0);
+  const tgtY = targetY + (data?.targetOffsetY || 0);
+
+  // Distance-adaptive curvature: shorter jumps have flatter curve; long jumps bow out gently
+  const dx = Math.abs(targetX - sourceX);
+  const adaptiveCurvature =
+    data?.curvature ?? (dx < 320 ? 0.22 : dx < 600 ? 0.32 : 0.42);
+
   const [edgePath] = getBezierPath({
     sourceX,
-    sourceY,
+    sourceY: srcY,
     sourcePosition,
     targetX,
-    targetY,
+    targetY: tgtY,
     targetPosition,
-    curvature: data?.curvature ?? 0.38,
+    curvature: adaptiveCurvature,
   });
 
   return <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />;
 };
 
-// Curved Subway (Rounded Orthogonal) Edge
+// Curved Subway (Rounded Orthogonal) Edge with staggered slots
 const CurvedSubwayEdgeComponent = ({
   id,
   sourceX,
@@ -341,13 +356,17 @@ const CurvedSubwayEdgeComponent = ({
   targetPosition,
   style,
   markerEnd,
+  data,
 }: EdgeProps) => {
+  const srcY = sourceY + (data?.sourceOffsetY || 0);
+  const tgtY = targetY + (data?.targetOffsetY || 0);
+
   const [edgePath] = getSmoothStepPath({
     sourceX,
-    sourceY,
+    sourceY: srcY,
     sourcePosition,
     targetX,
-    targetY,
+    targetY: tgtY,
     targetPosition,
     borderRadius: 20,
     offset: 16,
@@ -456,6 +475,16 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     return "bezier"; // Recommended default: Smooth Bezier curves!
   });
 
+  const [edgeDensity, setEdgeDensity] = useState<EdgeDensityMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("codeatlas_edge_density");
+      if (saved === "focus" || saved === "subtle" || saved === "all") return saved;
+    }
+    return "subtle"; // Recommended default: subtle background lines, illuminated active connections
+  });
+
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
   const handleSelectLayout = (mode: GraphLayoutMode) => {
     setLayoutMode(mode);
     if (typeof window !== "undefined") {
@@ -470,6 +499,13 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     setEdgeStyle(style);
     if (typeof window !== "undefined") {
       localStorage.setItem("codeatlas_graph_edge_style", style);
+    }
+  };
+
+  const handleSelectDensity = (density: EdgeDensityMode) => {
+    setEdgeDensity(density);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("codeatlas_edge_density", density);
     }
   };
 
@@ -605,26 +641,27 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     });
   }, [fitView, isMobile]);
 
-  // 4. Compute direct relationships for selected node
+  // 4. Compute direct relationships for selected node or hovered node
   const { directImports, directDependents } = useMemo(() => {
     const directImports = new Set<string>();
     const directDependents = new Set<string>();
+    const targetNode = hoveredNodeId || selectedNodeId;
 
-    if (!selectedNodeId) {
+    if (!targetNode) {
       return { directImports, directDependents };
     }
 
     for (const edge of graphData.edges) {
-      if (edge.source === selectedNodeId) {
+      if (edge.source === targetNode) {
         directImports.add(edge.target);
       }
-      if (edge.target === selectedNodeId) {
+      if (edge.target === targetNode) {
         directDependents.add(edge.source);
       }
     }
 
     return { directImports, directDependents };
-  }, [graphData.edges, selectedNodeId]);
+  }, [graphData.edges, selectedNodeId, hoveredNodeId]);
 
   // 5. Prepare nodes and edges with interactive selection, trace highlighting, and obstacle-free routing
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -632,10 +669,45 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     const traceEdgeSet = new Set(tracePathEdgeIds);
     const hasSelection = selectedNodeId !== null;
     const hasTrace = traceNodeSet.size > 0;
+    const hasHover = hoveredNodeId !== null;
+
+    // Group incoming and outgoing edges per node to calculate port slot staggering
+    const incomingPerNode = new Map<string, string[]>();
+    const outgoingPerNode = new Map<string, string[]>();
+
+    for (const e of graphData.edges) {
+      if (!incomingPerNode.has(e.target)) incomingPerNode.set(e.target, []);
+      incomingPerNode.get(e.target)!.push(e.id);
+
+      if (!outgoingPerNode.has(e.source)) outgoingPerNode.set(e.source, []);
+      outgoingPerNode.get(e.source)!.push(e.id);
+    }
+
+    // Sort edges in each slot deterministically by Y-position to prevent lines crossing as they land
+    for (const [, edgeIds] of incomingPerNode.entries()) {
+      edgeIds.sort((ea, eb) => {
+        const edgeA = graphData.edges.find((e) => e.id === ea);
+        const edgeB = graphData.edges.find((e) => e.id === eb);
+        const yA = edgeA ? layoutResult.positions.get(edgeA.source)?.y || 0 : 0;
+        const yB = edgeB ? layoutResult.positions.get(edgeB.source)?.y || 0 : 0;
+        return yA - yB;
+      });
+    }
+
+    for (const [, edgeIds] of outgoingPerNode.entries()) {
+      edgeIds.sort((ea, eb) => {
+        const edgeA = graphData.edges.find((e) => e.id === ea);
+        const edgeB = graphData.edges.find((e) => e.id === eb);
+        const yA = edgeA ? layoutResult.positions.get(edgeA.target)?.y || 0 : 0;
+        const yB = edgeB ? layoutResult.positions.get(edgeB.target)?.y || 0 : 0;
+        return yA - yB;
+      });
+    }
 
     const flowNodes: Node[] = graphData.nodes.map((node) => {
       const pos = layoutResult.positions.get(node.id) || { x: 50, y: 60, depth: 0 };
       const isSelected = node.id === selectedNodeId;
+      const isHovered = node.id === hoveredNodeId;
       const isTrace = traceNodeSet.has(node.id);
       const traceStep = isTrace ? tracePathNodeIds.indexOf(node.id) + 1 : undefined;
 
@@ -644,8 +716,9 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
 
       // Node is dimmed if another node is selected or trace is active and this node is unrelated
       const isDimmed =
-        (hasSelection || hasTrace) &&
+        (hasSelection || hasTrace || hasHover) &&
         !isSelected &&
+        !isHovered &&
         !isTrace &&
         !isDirectImport &&
         !isDirectDependent;
@@ -659,6 +732,8 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           path: node.path,
           lineCount: node.lineCount,
           exportsCount: node.exports?.length,
+          incomingCount: (incomingPerNode.get(node.id) || []).length,
+          outgoingCount: (outgoingPerNode.get(node.id) || []).length,
           isTrace,
           traceStep,
           isDimmed,
@@ -669,46 +744,80 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
       };
     });
 
-    const flowEdges: Edge[] = graphData.edges.map((edge) => {
+    const flowEdges: Edge[] = [];
+
+    for (const edge of graphData.edges) {
       const isTraceEdge = traceEdgeSet.has(edge.id);
       const isConnectedToSelected =
         hasSelection && (edge.source === selectedNodeId || edge.target === selectedNodeId);
+      const isConnectedToHovered =
+        hasHover && (edge.source === hoveredNodeId || edge.target === hoveredNodeId);
 
-      const { strokeColor, strokeWidth, opacity, animated } = computeEdgeVisuals({
+      const { strokeColor, strokeWidth, opacity, animated, showMarker } = computeEdgeVisuals({
         isTraceEdge,
         isConnectedToSelected,
+        isConnectedToHovered,
         hasSelection,
         hasTrace,
+        hasHover,
+        densityMode: edgeDensity,
       });
+
+      // Filter out hidden edges in focus mode
+      if (opacity <= 0) {
+        continue;
+      }
 
       const route = edgeRoutes.get(edge.id);
 
-      return {
+      // Calculate staggered port offsets
+      const inList = incomingPerNode.get(edge.target) || [];
+      const inIdx = inList.indexOf(edge.id);
+      const inCount = inList.length;
+      let targetOffsetY = 0;
+      if (inCount > 1) {
+        const maxSpread = Math.min(22, inCount * 3.5);
+        targetOffsetY = -maxSpread + (inIdx / (inCount - 1)) * (maxSpread * 2);
+      }
+
+      const outList = outgoingPerNode.get(edge.source) || [];
+      const outIdx = outList.indexOf(edge.id);
+      const outCount = outList.length;
+      let sourceOffsetY = 0;
+      if (outCount > 1) {
+        const maxSpread = Math.min(22, outCount * 3.5);
+        sourceOffsetY = -maxSpread + (outIdx / (outCount - 1)) * (maxSpread * 2);
+      }
+
+      flowEdges.push({
         id: edge.id,
         source: edge.source,
         target: edge.target,
         type: edgeStyle,
         data: {
           svgPath: route?.svgPath || "",
-          curvature: 0.38,
+          sourceOffsetY,
+          targetOffsetY,
         },
         animated,
         className: isTraceEdge ? "highlighted" : "",
-        zIndex: isTraceEdge ? 100 : isConnectedToSelected ? 20 : 1,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: strokeColor,
-          width: isTraceEdge ? 16 : isConnectedToSelected ? 12 : 9,
-          height: isTraceEdge ? 16 : isConnectedToSelected ? 12 : 9,
-        },
+        zIndex: isTraceEdge ? 100 : isConnectedToSelected || isConnectedToHovered ? 20 : 1,
+        markerEnd: showMarker
+          ? {
+              type: MarkerType.ArrowClosed,
+              color: strokeColor,
+              width: isTraceEdge ? 16 : isConnectedToSelected || isConnectedToHovered ? 12 : 9,
+              height: isTraceEdge ? 16 : isConnectedToSelected || isConnectedToHovered ? 12 : 9,
+            }
+          : undefined,
         style: {
           stroke: strokeColor,
           strokeWidth,
           opacity,
           transition: "opacity 0.2s ease, stroke 0.2s ease",
         },
-      };
-    });
+      });
+    }
 
     return { initialNodes: flowNodes, initialEdges: flowEdges };
   }, [
@@ -717,7 +826,9 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     layoutResult,
     edgeRoutes,
     edgeStyle,
+    edgeDensity,
     selectedNodeId,
+    hoveredNodeId,
     tracePathNodeIds,
     tracePathEdgeIds,
     directImports,
@@ -744,6 +855,8 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
+        onNodeMouseEnter={(_: any, node: Node) => setHoveredNodeId(node.id)}
+        onNodeMouseLeave={() => setHoveredNodeId(null)}
         onInit={handleInit}
         defaultViewport={defaultViewport}
         fitView={false}
@@ -907,6 +1020,70 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
             TRACE: {tracePathNodeIds.length} STEPS
           </span>
         )}
+      </div>
+
+      {/* Quick Edge Density Filter Pill */}
+      <div
+        style={{
+          position: "absolute",
+          top: isMobile ? "44px" : "12px",
+          left: isMobile ? "12px" : "310px",
+          zIndex: 12,
+          display: "flex",
+          alignItems: "center",
+          background: "var(--paper)",
+          border: "1.5px solid var(--ink)",
+          padding: "2px 4px",
+          boxShadow: "2px 2px 0px rgba(0,0,0,0.12)",
+          gap: "2px",
+        }}
+      >
+        <span
+          className="font-mono"
+          style={{
+            fontSize: "9px",
+            fontWeight: 800,
+            color: "var(--muted)",
+            padding: "0 4px",
+            letterSpacing: "0.05em",
+          }}
+        >
+          EDGES:
+        </span>
+        {(
+          [
+            { id: "focus", label: "Focus Only" },
+            { id: "subtle", label: "Subtle (Clean)" },
+            { id: "all", label: "All" },
+          ] as const
+        ).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => handleSelectDensity(item.id)}
+            className="font-mono"
+            style={{
+              background: edgeDensity === item.id ? "var(--accent)" : "var(--white)",
+              color: edgeDensity === item.id ? "#11100F" : "var(--ink)",
+              border: "1px solid var(--border)",
+              padding: "2px 6px",
+              fontSize: "9px",
+              fontWeight: edgeDensity === item.id ? 800 : 500,
+              cursor: "pointer",
+              textTransform: "uppercase",
+              transition: "background 0.15s ease",
+            }}
+            title={
+              item.id === "focus"
+                ? "Clean view: only display connections for the active/selected file"
+                : item.id === "subtle"
+                ? "Subtle background curves, bold illuminated active connections"
+                : "Display all curves simultaneously"
+            }
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       {/* Dev Environment Graph Style Toolbar */}

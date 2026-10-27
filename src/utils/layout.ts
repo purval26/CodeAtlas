@@ -1,6 +1,6 @@
-import { GraphEdge, GraphNode, GraphLayoutMode, GraphEdgeStyle } from "@/types";
+import { GraphEdge, GraphNode, GraphLayoutMode, GraphEdgeStyle, EdgeDensityMode } from "@/types";
 
-export type { GraphLayoutMode, GraphEdgeStyle };
+export type { GraphLayoutMode, GraphEdgeStyle, EdgeDensityMode };
 
 export interface NodePosition {
   x: number;
@@ -1078,8 +1078,11 @@ export function computeNodeVisuals(state: NodeVisualState): NodeVisualStyles {
 export interface EdgeVisualState {
   isTraceEdge?: boolean;
   isConnectedToSelected?: boolean;
+  isConnectedToHovered?: boolean;
   hasSelection?: boolean;
   hasTrace?: boolean;
+  hasHover?: boolean;
+  densityMode?: EdgeDensityMode;
 }
 
 export interface EdgeVisualStyles {
@@ -1087,29 +1090,58 @@ export interface EdgeVisualStyles {
   strokeWidth: number;
   opacity: number;
   animated: boolean;
+  showMarker: boolean;
 }
 
 export function computeEdgeVisuals(state: EdgeVisualState): EdgeVisualStyles {
+  const density = state.densityMode || "subtle";
+  const isHighlighted = Boolean(
+    state.isTraceEdge || state.isConnectedToSelected || state.isConnectedToHovered
+  );
+
+  // In "focus" mode: hide non-highlighted edges completely to eradicate clutter
+  if (density === "focus" && !isHighlighted) {
+    return {
+      strokeColor: "transparent",
+      strokeWidth: 0,
+      opacity: 0,
+      animated: false,
+      showMarker: false,
+    };
+  }
+
   let strokeColor = "var(--edge)";
-  let strokeWidth = 1.2;
-  let opacity = 0.45;
+  let strokeWidth = 1.0;
+  // In "subtle" mode: background edges are whisper-thin (0.10) to keep graph breathable
+  let opacity = density === "subtle" ? 0.10 : 0.35;
   let animated = false;
+  let showMarker: boolean = density === "all" || isHighlighted;
 
   if (state.isTraceEdge) {
     strokeColor = "var(--accent)";
     strokeWidth = 3;
     opacity = 1.0;
     animated = true;
+    showMarker = true;
   } else if (state.isConnectedToSelected) {
     strokeColor = "var(--ink)";
     strokeWidth = 2.2;
     opacity = 1.0;
-  } else if (state.hasSelection || state.hasTrace) {
-    opacity = 0.30;
-    strokeWidth = 1.0;
+    showMarker = true;
+  } else if (state.isConnectedToHovered) {
+    strokeColor = "var(--accent)";
+    strokeWidth = 2.0;
+    opacity = 0.95;
+    animated = true;
+    showMarker = true;
+  } else if (state.hasSelection || state.hasTrace || state.hasHover) {
+    // Dim background lines even further down when inspecting a node
+    opacity = density === "subtle" ? 0.04 : 0.15;
+    strokeWidth = 0.8;
+    showMarker = false;
   }
 
-  return { strokeColor, strokeWidth, opacity, animated };
+  return { strokeColor, strokeWidth, opacity, animated, showMarker };
 }
 
 

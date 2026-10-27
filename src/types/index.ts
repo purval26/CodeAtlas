@@ -85,6 +85,7 @@ export interface AnalysisJob {
 
 export type GraphLayoutMode = "layered" | "cluster" | "radial";
 export type GraphEdgeStyle = "bezier" | "smoothstep" | "obstacleFree" | "straight";
+export type EdgeDensityMode = "focus" | "subtle" | "all";
 
 export interface GraphData {
   repository: Repository;
