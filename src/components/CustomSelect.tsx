@@ -62,7 +62,7 @@ export function CustomSelect<T extends string = string>({
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", display: "inline-block" }}
+      style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
       className="custom-select-container"
     >
       <button
@@ -131,6 +131,8 @@ export function CustomSelect<T extends string = string>({
               boxShadow: "3px 3px 0px rgba(0, 0, 0, 0.18)",
               padding: "3px",
               minWidth: "148px",
+              maxHeight: "280px",
+              overflowY: "auto",
               display: "flex",
               flexDirection: "column",
               gap: "2px",

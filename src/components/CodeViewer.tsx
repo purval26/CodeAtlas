@@ -285,7 +285,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
         {/* Header / Tab Bar */}
         <div
           style={{
-            padding: "10px 16px",
+            padding: "8px 16px",
             borderBottom: `1px solid ${activeTheme.colors.border}`,
             display: "flex",
             alignItems: "center",
@@ -293,6 +293,10 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             background: activeTheme.colors.tabBg,
             gap: "12px",
             flexShrink: 0,
+            overflow: "visible",
+            zIndex: 40,
+            minHeight: "48px",
+            boxSizing: "border-box",
           }}
         >
           {/* File details & back button */}
@@ -380,8 +384,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               alignItems: "center",
               gap: "6px",
               flexShrink: 0,
-              overflowX: "auto",
-              paddingBottom: "1px",
+              overflow: "visible",
             }}
           >
             {/* Find Button */}
@@ -400,6 +403,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 padding: "0 10px",
                 height: "32px",
                 minHeight: "32px",
+                maxHeight: "32px",
                 fontSize: "11px",
                 display: "inline-flex",
                 alignItems: "center",
@@ -422,20 +426,28 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               onChange={handleThemeChange}
               icon={<Palette size={12} style={{ color: activeTheme.colors.fn, flexShrink: 0 }} />}
               ariaLabel="Select VS Code Theme"
-              compact={true}
+              compact={false}
               buttonStyle={{
                 background: activeTheme.colors.bg,
                 color: activeTheme.colors.text,
                 border: `1px solid ${activeTheme.colors.border}`,
                 height: "32px",
                 minHeight: "32px",
+                maxHeight: "32px",
+                boxShadow: "none",
                 boxSizing: "border-box",
+                padding: "0 10px",
+                fontSize: "11px",
               }}
               dropdownStyle={{
                 background: activeTheme.colors.tabBg,
                 border: `1.5px solid ${activeTheme.colors.border}`,
                 color: activeTheme.colors.text,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                maxHeight: "260px",
+                overflowY: "auto",
+                minWidth: "160px",
+                zIndex: 300,
               }}
             />
 
@@ -447,6 +459,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 padding: "0 10px",
                 height: "32px",
                 minHeight: "32px",
+                maxHeight: "32px",
                 fontSize: "11px",
                 display: "inline-flex",
                 alignItems: "center",
@@ -468,6 +481,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 padding: "0 10px",
                 height: "32px",
                 minHeight: "32px",
+                maxHeight: "32px",
                 fontSize: "11px",
                 display: "inline-flex",
                 alignItems: "center",
