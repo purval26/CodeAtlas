@@ -119,7 +119,7 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/CodeAtlas.git
+git clone https://github.com/purval26/CodeAtlas.git
 cd CodeAtlas
 ```
 
@@ -129,15 +129,19 @@ npm install
 ```
 
 ### 3. Configure Environment Variables
-Create a `.env.local` file in the root directory:
+Copy the example environment configuration:
+```bash
+cp .env.example .env.local
+```
+Or edit `.env.local` with your preferred configuration:
 
 ```env
 # Optional: OpenRouter API key for live neural reasoning models
 OPENROUTER_API_KEY="your_openrouter_api_key_here"
 
-# Optional: Default models
-OPENROUTER_MODEL="google/gemini-3.8-flash"
-OPENROUTER_FREE_MODEL="nvidia/nemotron-3-ultra-550b-a55b:free"
+# Optional: GitHub token for higher rate limits (5000 req/hr vs 60)
+GITHUB_TOKEN="ghp_your_personal_access_token"
+```
 
 # Optional: GitHub OAuth (for analyzing private repositories)
 GITHUB_CLIENT_ID=""
