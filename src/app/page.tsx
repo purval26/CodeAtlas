@@ -372,6 +372,7 @@ export default function Home() {
                       onSelectNode={(id) => setSelectedNodeId(id)}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
+                      isTablet={true}
                     />
 
                     {/* Tablet Quick Toggle Pills */}
@@ -379,10 +380,11 @@ export default function Home() {
                       style={{
                         position: "absolute",
                         bottom: "16px",
-                        left: "16px",
+                        left: isTabletExplorerOpen ? "296px" : "16px",
                         display: "flex",
                         gap: "8px",
                         zIndex: 30,
+                        transition: "left 0.2s ease",
                       }}
                     >
                       <button
@@ -419,7 +421,7 @@ export default function Home() {
                   </div>
 
                   {isTabletInspectorOpen && (
-                    <div style={{ width: "300px", height: "100%", zIndex: 20 }}>
+                    <div style={{ width: "320px", maxWidth: "85vw", height: "100%", zIndex: 20, boxSizing: "border-box" }}>
                       <FileInspector
                         selectedNode={selectedNode}
                         graphData={graphData}

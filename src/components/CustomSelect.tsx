@@ -18,6 +18,8 @@ interface CustomSelectProps<T extends string = string> {
   icon?: React.ReactNode;
   ariaLabel?: string;
   compact?: boolean;
+  buttonStyle?: React.CSSProperties;
+  dropdownStyle?: React.CSSProperties;
 }
 
 export function CustomSelect<T extends string = string>({
@@ -28,6 +30,8 @@ export function CustomSelect<T extends string = string>({
   icon,
   ariaLabel,
   compact = false,
+  buttonStyle,
+  dropdownStyle,
 }: CustomSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +89,7 @@ export function CustomSelect<T extends string = string>({
           userSelect: "none",
           transition: "background 0.12s ease",
           outline: "none",
+          ...buttonStyle,
         }}
       >
         {icon && <span style={{ display: "flex", alignItems: "center", color: "var(--muted)" }}>{icon}</span>}
@@ -123,6 +128,7 @@ export function CustomSelect<T extends string = string>({
             display: "flex",
             flexDirection: "column",
             gap: "2px",
+            ...dropdownStyle,
           }}
         >
           {options.map((option) => {
@@ -144,7 +150,9 @@ export function CustomSelect<T extends string = string>({
                   justifyContent: "space-between",
                   gap: "8px",
                   background: isSelected ? "var(--accent)" : "transparent",
-                  color: isSelected ? "#11100F" : "var(--ink)",
+                  color: isSelected
+                    ? "#11100F"
+                    : dropdownStyle?.color || "var(--ink)",
                   border: "none",
                   padding: "5px 8px",
                   fontSize: "11px",

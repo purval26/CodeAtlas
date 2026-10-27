@@ -23,14 +23,17 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
   isMobileSheet = false,
 }) => {
   const containerStyle: React.CSSProperties = {
-    width: isMobileSheet ? "100%" : "320px",
+    width: "100%",
     minWidth: isMobileSheet ? "100%" : "280px",
+    maxWidth: isMobileSheet ? "100%" : "340px",
     borderLeft: isMobileSheet ? "none" : "1.5px solid var(--border)",
     background: "var(--white)",
     display: "flex",
     flexDirection: "column",
     height: "100%",
     overflowY: "auto",
+    overflowX: "hidden",
+    boxSizing: "border-box",
   };
 
   if (!selectedNode) {
@@ -84,9 +87,11 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
       {/* Header */}
       <div
         style={{
-          padding: "16px",
+          padding: isMobileSheet ? "16px 20px" : "16px",
           borderBottom: "1.5px solid var(--border)",
           background: "var(--paper)",
+          boxSizing: "border-box",
+          width: "100%",
         }}
       >
         <div
@@ -167,7 +172,16 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
         )}
       </div>
 
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div
+        style={{
+          padding: isMobileSheet ? "16px 20px" : "16px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px",
+          boxSizing: "border-box",
+          width: "100%",
+        }}
+      >
         {/* Technical Metadata */}
         {selectedNode.lineCount !== undefined && (
           <div

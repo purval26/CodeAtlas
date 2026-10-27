@@ -61,6 +61,7 @@ interface AtlasCanvasProps {
   tracePathNodeIds?: string[];
   tracePathEdgeIds?: string[];
   isMobile?: boolean;
+  isTablet?: boolean;
 }
 
 // Custom Node for Code Files with strict dimensions and centered handles
@@ -446,6 +447,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   tracePathNodeIds = [],
   tracePathEdgeIds = [],
   isMobile = false,
+  isTablet = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const initializedRepoRef = useRef<string | null>(null);
@@ -664,6 +666,26 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
       });
     }
   }, [graphData.repository.id, fitView, isMobile]);
+
+  const prevSelectedIdRef = useRef<string | null>(selectedNodeId);
+
+  // Auto-center / focus camera whenever a node is selected on small screens (mobile or tablet)
+  useEffect(() => {
+    if ((isMobile || isTablet) && selectedNodeId && layoutResult.positions.has(selectedNodeId)) {
+      if (prevSelectedIdRef.current !== selectedNodeId) {
+        prevSelectedIdRef.current = selectedNodeId;
+        const pos = layoutResult.positions.get(selectedNodeId)!;
+        const node = graphData.nodes.find((n) => n.id === selectedNodeId);
+        const dims = node ? getNodeDimensions(node) : { width: NODE_WIDTH, height: NODE_HEIGHT };
+        const centerX = pos.x + dims.width / 2;
+        const centerY = pos.y + dims.height / 2;
+        const targetZoom = isMobile ? 1.05 : 1.15;
+        setCenter(centerX, centerY, { zoom: targetZoom, duration: 300 });
+      }
+    } else if (!selectedNodeId) {
+      prevSelectedIdRef.current = null;
+    }
+  }, [selectedNodeId, isMobile, isTablet, layoutResult.positions, graphData.nodes, setCenter]);
 
   // Explicit user action: Focus Selected Node (or architecture entry point if none selected)
   const handleFocus = useCallback(() => {
@@ -899,8 +921,17 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       onSelectNode(node.id);
+      if ((isMobile || isTablet) && layoutResult.positions.has(node.id)) {
+        const pos = layoutResult.positions.get(node.id)!;
+        const fullNode = graphData.nodes.find((n) => n.id === node.id);
+        const dims = fullNode ? getNodeDimensions(fullNode) : { width: NODE_WIDTH, height: NODE_HEIGHT };
+        const centerX = pos.x + dims.width / 2;
+        const centerY = pos.y + dims.height / 2;
+        const targetZoom = isMobile ? 1.05 : 1.15;
+        setCenter(centerX, centerY, { zoom: targetZoom, duration: 300 });
+      }
     },
-    [onSelectNode]
+    [onSelectNode, isMobile, isTablet, layoutResult.positions, graphData.nodes, setCenter]
   );
 
   const FlowComponent: React.ComponentType<any> = ReactFlow as any;
@@ -932,10 +963,10 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
 
         {/* Dedicated Atlas Camera Controls (Focus Architecture / Fit Graph / Zoom) */}
         <Panel
-          position={isMobile ? "bottom-right" : "bottom-left"}
+          position={isMobile || isTablet ? "bottom-right" : "bottom-left"}
           style={
-            isMobile
-              ? { marginBottom: "12px", marginRight: "12px" }
+            isMobile || isTablet
+              ? { marginBottom: isMobile ? "12px" : "16px", marginRight: isMobile ? "12px" : "16px" }
               : { marginBottom: "16px", marginLeft: "16px" }
           }
         >

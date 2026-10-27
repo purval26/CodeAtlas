@@ -20,6 +20,7 @@ import {
   tokenizeCode,
   resolveImportPath,
 } from "@/utils/codeTheming";
+import { CustomSelect, CustomSelectOption } from "./CustomSelect";
 
 interface CodeViewerProps {
   file: CodeFile;
@@ -75,6 +76,13 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   const activeTheme: VSCodeTheme = useMemo(() => {
     return VSCODE_THEMES.find((t) => t.id === themeId) || VSCODE_THEMES[0];
   }, [themeId]);
+
+  const themeOptions: CustomSelectOption[] = useMemo(() => {
+    return VSCODE_THEMES.map((t) => ({
+      value: t.id,
+      label: t.name.split(" (")[0],
+    }));
+  }, []);
 
   const handleThemeChange = (newId: string) => {
     setThemeId(newId);
@@ -408,65 +416,30 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               <span>FIND</span>
             </button>
 
-            {/* VS Code Theme Dropdown */}
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
+            {/* VS Code Theme CustomSelect */}
+            <CustomSelect
+              labelPrefix="THEME:"
+              value={themeId}
+              options={themeOptions}
+              onChange={handleThemeChange}
+              icon={<Palette size={12} style={{ color: activeTheme.colors.fn, flexShrink: 0 }} />}
+              ariaLabel="Select VS Code Theme"
+              compact={true}
+              buttonStyle={{
                 background: activeTheme.colors.bg,
+                color: activeTheme.colors.text,
                 border: `1px solid ${activeTheme.colors.border}`,
-                padding: "0 8px",
                 height: "32px",
                 minHeight: "32px",
                 boxSizing: "border-box",
               }}
-            >
-              <Palette size={12} style={{ color: activeTheme.colors.fn, flexShrink: 0 }} />
-              <label
-                htmlFor="vscode-theme-select"
-                className="font-mono"
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: activeTheme.colors.gutterText,
-                  marginRight: "2px",
-                  userSelect: "none",
-                }}
-              >
-                THEME:
-              </label>
-              <select
-                id="vscode-theme-select"
-                value={themeId}
-                onChange={(e) => handleThemeChange(e.target.value)}
-                aria-label="Select VS Code Theme"
-                className="font-mono"
-                style={{
-                  background: "transparent",
-                  color: activeTheme.colors.text,
-                  border: "none",
-                  fontSize: "11px",
-                  cursor: "pointer",
-                  outline: "none",
-                  fontWeight: 600,
-                  height: "100%",
-                }}
-              >
-                {VSCODE_THEMES.map((theme) => (
-                  <option
-                    key={theme.id}
-                    value={theme.id}
-                    style={{
-                      background: theme.colors.bg,
-                      color: theme.colors.text,
-                    }}
-                  >
-                    {theme.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              dropdownStyle={{
+                background: activeTheme.colors.tabBg,
+                border: `1.5px solid ${activeTheme.colors.border}`,
+                color: activeTheme.colors.text,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              }}
+            />
 
             {/* Copy button */}
             <button
