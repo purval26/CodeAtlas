@@ -7,62 +7,164 @@
   --muted: #6E6B64;
   --white: #FBFAF6;
   --code: #1D1D1B;
+  --border: #171717;
+  --hover-bg: rgba(216, 255, 62, 0.18);
+  --canvas-bg: #EFECE3;
+  --edge: #8A867E;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
-[data-theme='dark'],
-.dark {
+.dark,
+[data-theme='dark'] {
   --paper: #11100F;
   --ink: #F3EFE5;
   --accent: #FF2AA8;
   --muted: #AAA59A;
   --white: #181716;
   --code: #090909;
+  --border: #3A3732;
+  --hover-bg: rgba(255, 42, 168, 0.18);
+  --canvas-bg: #0C0B0A;
+  --edge: #524E48;
 }
 
 * {
   box-sizing: border-box;
-  border-color: var(--ink);
-}
-
-body {
-  background-color: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  min-height: 100vh;
   margin: 0;
   padding: 0;
+  border-radius: 0 !important;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-space-grotesk), 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
+  position: relative;
 }
 
 .font-mono {
-  font-family: var(--font-dm-mono), monospace;
+  font-family: var(--font-dm-mono), 'DM Mono', monospace;
 }
 
-/* Sharp geometry tokens */
-.border-ink {
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink);
+}
+
+/* Button & interactive styling matching prototype */
+button {
+  font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.15s ease;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent);
+  color: #11100F;
   border-color: var(--ink);
 }
 
-.bg-paper {
-  background-color: var(--paper);
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-.bg-white-panel {
-  background-color: var(--white);
+button.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
 }
 
-.text-ink {
+.dark button.btn-primary {
+  background: var(--accent);
+  color: #11100F;
+  border-color: var(--accent);
+}
+
+button.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: #11100F;
+  border-color: var(--ink);
+}
+
+input, select, textarea {
+  font-family: var(--font-dm-mono), 'DM Mono', monospace;
+  background: var(--white);
   color: var(--ink);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  font-size: 13px;
+  outline: none;
 }
 
-.text-muted {
-  color: var(--muted);
+input:focus, select:focus, textarea:focus {
+  border: 2px solid var(--ink);
 }
 
-.text-accent {
-  color: var(--accent);
+/* Hero Form Container */
+.hero-form-container {
+  display: flex;
+  border: 2px solid var(--ink);
+  background: var(--white);
+  flex-direction: row;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.bg-accent {
-  background-color: var(--accent);
+@media (max-width: 640px) {
+  .hero-form-container {
+    flex-direction: column;
+  }
+  .hero-form-container input {
+    border-bottom: 2px solid var(--ink) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .hero-form-container button {
+    border-left: none !important;
+    width: 100% !important;
+    min-height: 48px;
+    justify-content: center;
+    box-sizing: border-box !important;
+  }
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
