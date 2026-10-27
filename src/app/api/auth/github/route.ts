@@ -14,17 +14,16 @@ export async function GET(request: Request) {
   }
 
   const state = createOAuthState();
-  const urlObj = new URL(request.url);
-  const proto = request.headers.get("x-forwarded-proto") || urlObj.protocol.replace(":", "");
-  const host = request.headers.get("x-forwarded-host") || urlObj.host;
-  const defaultRedirect = `${proto}://${host}/api/auth/github/callback`;
-  const redirectUri = process.env.GITHUB_REDIRECT_URI || defaultRedirect;
+  const redirectUri = process.env.GITHUB_REDIRECT_URI;
 
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
+  let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
     clientId
-  )}&scope=repo,read:user&state=${encodeURIComponent(state)}&redirect_uri=${encodeURIComponent(
-    redirectUri
-  )}`;
+  )}&scope=repo,read:user&state=${encodeURIComponent(state)}`;
+
+  // If redirect URI is explicitly configured in .env, supply it; otherwise let GitHub use the registered callback URL
+  if (redirectUri) {
+    githubAuthUrl += `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  }
 
   return NextResponse.redirect(githubAuthUrl);
 }

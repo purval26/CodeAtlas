@@ -4,9 +4,22 @@ import { buildBoundedContext } from "@/server/intelligence/retrieval";
 import { llmAdapter } from "@/server/intelligence/instance";
 import { getSession, isAuthorizedForRepo } from "@/server/auth/session";
 import { AVAILABLE_MODELS } from "@/types";
+import { askRateLimiter, getClientIp } from "@/server/middleware/rateLimiter";
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const rateCheck = askRateLimiter.check(ip);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "RATE_LIMITED", message: rateCheck.message },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateCheck.retryAfter || 60) },
+        }
+      );
+    }
+
     const body = await request.json();
     const { repositoryId, question, mode, model, reasoningEffort } = body;
 

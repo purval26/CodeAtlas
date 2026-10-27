@@ -33,16 +33,45 @@ export async function GET(
     return NextResponse.json(
       {
         error: "UNAUTHORIZED",
-        message: "This repository is private. Please log in with GitHub to access its source files.",
+        message: "Access denied: you are not authorized to access this private repository.",
       },
       { status: 403 }
     );
   }
 
-  const fileResult = repoData.parsedFiles.get(filePath);
+  const normalizedPath = filePath.replace(/\\/g, "/").replace(/^\.?\//, "").trim();
+
+  // 1. Exact normalized path match
+  let fileResult = repoData.parsedFiles.get(normalizedPath) || repoData.parsedFiles.get(filePath);
+
+  if (!fileResult) {
+    // 2. Safe unique path resolution with path boundaries (rejecting ambiguous matches)
+    const matchingPaths: string[] = [];
+    for (const existingPath of repoData.parsedFiles.keys()) {
+      if (
+        existingPath === normalizedPath ||
+        existingPath.endsWith("/" + normalizedPath)
+      ) {
+        matchingPaths.push(existingPath);
+      }
+    }
+
+    if (matchingPaths.length === 1) {
+      fileResult = repoData.parsedFiles.get(matchingPaths[0]);
+    } else if (matchingPaths.length > 1) {
+      return NextResponse.json(
+        {
+          error: "AMBIGUOUS_PATH",
+          message: `Ambiguous file path '${filePath}': multiple matching files found (${matchingPaths.join(", ")}). Please specify the full repository-relative path.`,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   if (!fileResult) {
     return NextResponse.json(
-      { error: "NOT_FOUND", message: `File ${filePath} not found in repository.` },
+      { error: "NOT_FOUND", message: `File not found: ${filePath}` },
       { status: 404 }
     );
   }

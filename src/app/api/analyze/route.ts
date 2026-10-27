@@ -2,9 +2,22 @@ import { NextResponse } from "next/server";
 import { jobManager } from "@/server/jobs";
 import { parseGitHubUrl } from "@/server/ingestion/github";
 import { getSession } from "@/server/auth/session";
+import { analyzeRateLimiter, getClientIp } from "@/server/middleware/rateLimiter";
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const rateCheck = analyzeRateLimiter.check(ip);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "RATE_LIMITED", message: rateCheck.message },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateCheck.retryAfter || 60) },
+        }
+      );
+    }
+
     const body = await request.json();
     const url = body?.url;
 
