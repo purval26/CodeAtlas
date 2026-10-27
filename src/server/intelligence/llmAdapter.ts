@@ -277,16 +277,25 @@ export class LlmAdapter {
     context: string,
     effort: "low" | "medium" | "high" = "medium",
     modelId?: string,
-    mode: "free" | "paid" = "free"
+    mode: "free" | "paid" | "custom" = "free",
+    customApiKey?: string,
+    customBaseUrl?: string
   ): Promise<{ content: string; modelUsed: string }> {
+    const effectiveKey = customApiKey || this.primaryApiKey;
     if (
-      this.primaryApiKey === "invalid-test-key-trigger-failure" &&
+      effectiveKey === "invalid-test-key-trigger-failure" &&
       process.env.RUN_LIVE_API_TESTS !== "1"
     ) {
       throw new Error("OpenRouter API error (401 Unauthorized): Simulated test failure");
     }
 
-    const url = "https://openrouter.ai/api/v1/chat/completions";
+    const defaultUrl = "https://openrouter.ai/api/v1/chat/completions";
+    const url = customBaseUrl
+      ? customBaseUrl.endsWith("/chat/completions")
+        ? customBaseUrl
+        : `${customBaseUrl.replace(/\/+$/, "")}/chat/completions`
+      : defaultUrl;
+
     const targetModel =
       modelId ||
       (mode === "paid"
@@ -306,7 +315,7 @@ export class LlmAdapter {
     };
 
     // Apply reasoning effort for paid models or models that support reasoning effort
-    if (mode === "paid" || targetModel.includes("gemini-3.8")) {
+    if (mode === "paid" || targetModel.includes("gemini-3.8") || targetModel.includes("r1") || targetModel.includes("reasoning")) {
       body.reasoning = {
         effort,
         exclude: false,
@@ -317,7 +326,7 @@ export class LlmAdapter {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.primaryApiKey}`,
+        Authorization: `Bearer ${effectiveKey}`,
         "HTTP-Referer": "https://codeatlas.dev",
         "X-Title": "CodeAtlas",
       },
@@ -382,17 +391,26 @@ export class LlmAdapter {
     context: string,
     effort: "low" | "medium" | "high" = "medium",
     modelId?: string,
-    mode: "free" | "paid" = "free",
-    onToken?: (token: string) => void
+    mode: "free" | "paid" | "custom" = "free",
+    onToken?: (token: string) => void,
+    customApiKey?: string,
+    customBaseUrl?: string
   ): Promise<{ content: string; modelUsed: string }> {
+    const effectiveKey = customApiKey || this.primaryApiKey;
     if (
-      this.primaryApiKey === "invalid-test-key-trigger-failure" &&
+      effectiveKey === "invalid-test-key-trigger-failure" &&
       process.env.RUN_LIVE_API_TESTS !== "1"
     ) {
       throw new Error("OpenRouter API error (401 Unauthorized): Simulated test failure");
     }
 
-    const url = "https://openrouter.ai/api/v1/chat/completions";
+    const defaultUrl = "https://openrouter.ai/api/v1/chat/completions";
+    const url = customBaseUrl
+      ? customBaseUrl.endsWith("/chat/completions")
+        ? customBaseUrl
+        : `${customBaseUrl.replace(/\/+$/, "")}/chat/completions`
+      : defaultUrl;
+
     const targetModel =
       modelId ||
       (mode === "paid"
@@ -412,7 +430,7 @@ export class LlmAdapter {
       temperature: 0.1,
     };
 
-    if (mode === "paid" || targetModel.includes("gemini-3.8")) {
+    if (mode === "paid" || targetModel.includes("gemini-3.8") || targetModel.includes("r1") || targetModel.includes("reasoning")) {
       body.reasoning = {
         effort,
         exclude: false,
@@ -423,7 +441,7 @@ export class LlmAdapter {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.primaryApiKey}`,
+        Authorization: `Bearer ${effectiveKey}`,
         "HTTP-Referer": "https://codeatlas.dev",
         "X-Title": "CodeAtlas",
       },
@@ -715,14 +733,27 @@ export class LlmAdapter {
     question: string,
     retrieval: RetrievalResult,
     parsedFiles: Map<string, ParsedFileResult>,
-    options?: "free" | "paid" | { mode?: "free" | "paid"; model?: string }
+    options?: "free" | "paid" | "custom" | {
+      mode?: "free" | "paid" | "custom";
+      model?: string;
+      apiKey?: string;
+      provider?: string;
+      baseUrl?: string;
+    }
   ): Promise<AskResponse> {
     this.refreshConfig();
 
-    const mode: "free" | "paid" =
+    const mode: "free" | "paid" | "custom" =
       typeof options === "string"
         ? options
         : options?.mode || (options?.model?.includes(":free") ? "free" : "free");
+
+    const customApiKey = typeof options === "object" ? options.apiKey?.trim() : undefined;
+    const customBaseUrl = typeof options === "object" ? options.baseUrl?.trim() : undefined;
+    const customProvider = typeof options === "object" ? options.provider : undefined;
+
+    const hasEffectiveKey = Boolean(customApiKey || this.primaryApiKey);
+    const effectiveProvider = customProvider || (customApiKey ? "openrouter" : this.primaryProvider);
 
     const targetModel =
       typeof options === "object" && options.model
@@ -737,7 +768,7 @@ export class LlmAdapter {
           "INSUFFICIENT EVIDENCE: CodeAtlas could not find enough repository evidence to answer this confidently.",
         verifiedCitations: [],
         insufficientEvidence: true,
-        modelUsed: this.primaryApiKey ? targetModel : "codeatlas/deterministic-synthesizer",
+        modelUsed: hasEffectiveKey ? targetModel : "codeatlas/deterministic-synthesizer",
         mode,
       };
     }
@@ -747,7 +778,7 @@ export class LlmAdapter {
 
     const qLower = question.toLowerCase();
     if (
-      !this.primaryApiKey &&
+      !hasEffectiveKey &&
       (qLower.includes("log in") || qLower.includes("login")) &&
       !qLower.includes("where") &&
       !qLower.includes("depend") &&
@@ -755,23 +786,25 @@ export class LlmAdapter {
     ) {
       rawOutput = GOLDEN_ANSWER;
       modelUsed = "codeatlas/deterministic-synthesizer";
-    } else if (this.primaryApiKey) {
+    } else if (hasEffectiveKey) {
       // Live AI reasoning provider
-      if (this.primaryProvider === "openrouter") {
+      if (effectiveProvider === "openrouter" || effectiveProvider === "custom") {
         const effort = this.determineEffort(question);
         const openRouterRes = await this.callOpenRouter(
           question,
           retrieval.contextText,
           effort,
           targetModel,
-          mode
+          mode,
+          customApiKey,
+          customBaseUrl
         );
         rawOutput = openRouterRes.content;
         modelUsed = openRouterRes.modelUsed;
-      } else if (this.primaryProvider === "gemini") {
+      } else if (effectiveProvider === "gemini") {
         rawOutput = await this.callGemini(question, retrieval.contextText);
         modelUsed = `google/${process.env.GEMINI_MODEL || "gemini-2.0-flash"}`;
-      } else if (this.primaryProvider === "openai") {
+      } else if (effectiveProvider === "openai") {
         rawOutput = await this.callOpenAI(question, retrieval.contextText);
         modelUsed = "openai/gpt-4o-mini";
       } else {
@@ -815,15 +848,28 @@ export class LlmAdapter {
     question: string,
     retrieval: RetrievalResult,
     parsedFiles: Map<string, ParsedFileResult>,
-    options?: "free" | "paid" | { mode?: "free" | "paid"; model?: string },
+    options?: "free" | "paid" | "custom" | {
+      mode?: "free" | "paid" | "custom";
+      model?: string;
+      apiKey?: string;
+      provider?: string;
+      baseUrl?: string;
+    },
     onToken?: (token: string) => void
   ): Promise<AskResponse> {
     this.refreshConfig();
 
-    const mode: "free" | "paid" =
+    const mode: "free" | "paid" | "custom" =
       typeof options === "string"
         ? options
         : options?.mode || (options?.model?.includes(":free") ? "free" : "free");
+
+    const customApiKey = typeof options === "object" ? options.apiKey?.trim() : undefined;
+    const customBaseUrl = typeof options === "object" ? options.baseUrl?.trim() : undefined;
+    const customProvider = typeof options === "object" ? options.provider : undefined;
+
+    const hasEffectiveKey = Boolean(customApiKey || this.primaryApiKey);
+    const effectiveProvider = customProvider || (customApiKey ? "openrouter" : this.primaryProvider);
 
     const targetModel =
       typeof options === "object" && options.model
@@ -840,7 +886,7 @@ export class LlmAdapter {
         answer: msg,
         verifiedCitations: [],
         insufficientEvidence: true,
-        modelUsed: this.primaryApiKey ? targetModel : "codeatlas/deterministic-synthesizer",
+        modelUsed: hasEffectiveKey ? targetModel : "codeatlas/deterministic-synthesizer",
         mode,
       };
     }
@@ -850,7 +896,7 @@ export class LlmAdapter {
 
     const qLower = question.toLowerCase();
     const isGolden =
-      !this.primaryApiKey &&
+      !hasEffectiveKey &&
       (qLower.includes("log in") || qLower.includes("login")) &&
       !qLower.includes("where") &&
       !qLower.includes("depend") &&
@@ -864,8 +910,8 @@ export class LlmAdapter {
         onToken?.(rawOutput.slice(i, i + chunkSize));
         await new Promise((r) => setTimeout(r, 6));
       }
-    } else if (this.primaryApiKey) {
-      if (this.primaryProvider === "openrouter") {
+    } else if (hasEffectiveKey) {
+      if (effectiveProvider === "openrouter" || effectiveProvider === "custom") {
         const effort = this.determineEffort(question);
         const openRouterRes = await this.callOpenRouterStream(
           question,
@@ -873,29 +919,26 @@ export class LlmAdapter {
           effort,
           targetModel,
           mode,
-          onToken
+          onToken,
+          customApiKey,
+          customBaseUrl
         );
         rawOutput = openRouterRes.content;
         modelUsed = openRouterRes.modelUsed;
-      } else if (this.primaryProvider === "gemini") {
+      } else if (effectiveProvider === "gemini") {
         rawOutput = await this.callGemini(question, retrieval.contextText);
         modelUsed = `google/${process.env.GEMINI_MODEL || "gemini-2.0-flash"}`;
         onToken?.(rawOutput);
-      } else if (this.primaryProvider === "openai") {
+      } else if (effectiveProvider === "openai") {
         rawOutput = await this.callOpenAI(question, retrieval.contextText);
         modelUsed = "openai/gpt-4o-mini";
         onToken?.(rawOutput);
       } else {
         rawOutput = this.deterministicSynthesizer(question, retrieval, parsedFiles);
         modelUsed = "codeatlas/deterministic-synthesizer";
-        const chunkSize = 20;
-        for (let i = 0; i < rawOutput.length; i += chunkSize) {
-          onToken?.(rawOutput.slice(i, i + chunkSize));
-          await new Promise((r) => setTimeout(r, 6));
-        }
+        onToken?.(rawOutput);
       }
     } else {
-      // Offline / baseline synthesizer (no API key configured in environment)
       rawOutput = this.deterministicSynthesizer(question, retrieval, parsedFiles);
       modelUsed = "codeatlas/deterministic-synthesizer";
       const chunkSize = 20;

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Repository, AuthUser } from "@/types";
-import { Sun, Moon, Compass, RefreshCw, GitFork, MessageSquare, LogOut, FolderGit2 } from "lucide-react";
+import { Sun, Moon, Compass, RefreshCw, GitFork, MessageSquare, LogOut, FolderGit2, Sliders } from "lucide-react";
 
 interface HeaderProps {
   repository: Repository | null;
@@ -10,6 +10,7 @@ interface HeaderProps {
   onLoadDemo: () => void;
   onOpenAsk?: () => void;
   onOpenTrace?: () => void;
+  onOpenSettings?: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
   isMobile?: boolean;
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLoadDemo,
   onOpenAsk,
   onOpenTrace,
+  onOpenSettings,
   isDark,
   onToggleTheme,
   isMobile = false,
@@ -264,6 +266,27 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{isMobile ? "LOGIN" : "LOGIN GITHUB"}</span>
           </button>
         ) : null}
+
+        {/* Settings modal trigger */}
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            style={{
+              height: "36px",
+              minHeight: "36px",
+              padding: isMobile ? "0" : "6px 12px",
+              width: isMobile ? "36px" : "auto",
+              fontSize: "12px",
+              boxSizing: "border-box",
+              gap: "6px",
+            }}
+            aria-label="CodeAtlas Settings"
+            title="Configure Models, API Key, Graph & Code Viewer Settings"
+          >
+            <Sliders size={14} />
+            {!isMobile && <span>SETTINGS</span>}
+          </button>
+        )}
 
         {/* Theme toggle */}
         <button

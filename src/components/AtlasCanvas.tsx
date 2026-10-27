@@ -33,6 +33,7 @@ import {
   PKG_HEIGHT,
 } from "@/utils/layout";
 import { FileCode, Package, Focus, Maximize2 } from "lucide-react";
+import { useSettings } from "@/utils/settings";
 import { CustomSelect, CustomSelectOption } from "./CustomSelect";
 
 const EDGE_DENSITY_OPTIONS: CustomSelectOption<EdgeDensityMode>[] = [
@@ -486,37 +487,11 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     }
   }, []);
 
-  // User selected graph layout and edge curve modes (defaults to recommended Bezier + Layered)
-  const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("codeatlas_graph_layout");
-      if (saved === "radial" || saved === "cluster" || saved === "layered") return saved;
-    }
-    return "layered";
-  });
-
-  const [edgeStyle, setEdgeStyle] = useState<GraphEdgeStyle>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("codeatlas_graph_edge_style");
-      if (
-        saved === "bezier" ||
-        saved === "smoothstep" ||
-        saved === "obstacleFree" ||
-        saved === "straight"
-      ) {
-        return saved;
-      }
-    }
-    return "bezier"; // Recommended default: Smooth Bezier curves!
-  });
-
-  const [edgeDensity, setEdgeDensity] = useState<EdgeDensityMode>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("codeatlas_edge_density");
-      if (saved === "focus" || saved === "subtle" || saved === "all") return saved;
-    }
-    return "subtle"; // Recommended default: subtle background lines, illuminated active connections
-  });
+  // User selected graph layout, edge curves, and density synchronized with unified Settings
+  const [settings, updateSettings] = useSettings();
+  const layoutMode = settings.graphLayout;
+  const edgeStyle = settings.edgeStyle;
+  const edgeDensity = settings.edgeDensity;
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -547,27 +522,18 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   }, []);
 
   const handleSelectLayout = (mode: GraphLayoutMode) => {
-    setLayoutMode(mode);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("codeatlas_graph_layout", mode);
-    }
+    updateSettings({ graphLayout: mode });
     setTimeout(() => {
       fitView({ padding: isMobile ? 0.04 : 0.06, duration: 350 });
     }, 40);
   };
 
   const handleSelectEdgeStyle = (style: GraphEdgeStyle) => {
-    setEdgeStyle(style);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("codeatlas_graph_edge_style", style);
-    }
+    updateSettings({ edgeStyle: style });
   };
 
   const handleSelectDensity = (density: EdgeDensityMode) => {
-    setEdgeDensity(density);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("codeatlas_edge_density", density);
-    }
+    updateSettings({ edgeDensity: density });
   };
 
   const isDevEnv =
@@ -1148,7 +1114,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           justifyContent: "flex-end",
         }}
       >
-        {/* Anti-Clutter Edge Visibility Custom Select */}
+        {/* Anti-Clutter Edge Visibility Quick Select */}
         <CustomSelect<EdgeDensityMode>
           labelPrefix="EDGES:"
           value={edgeDensity}
@@ -1157,29 +1123,6 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
           ariaLabel="Edge Visibility Mode"
           compact={isMobile}
         />
-
-        {/* Development Environment Custom Select Modules */}
-        {isDevEnv && (
-          <>
-            <CustomSelect<GraphLayoutMode>
-              labelPrefix="LAYOUT:"
-              value={layoutMode}
-              options={LAYOUT_MODE_OPTIONS}
-              onChange={handleSelectLayout}
-              ariaLabel="Graph Layout Mode"
-              compact={isMobile}
-            />
-
-            <CustomSelect<GraphEdgeStyle>
-              labelPrefix="CURVES:"
-              value={edgeStyle}
-              options={EDGE_STYLE_OPTIONS}
-              onChange={handleSelectEdgeStyle}
-              ariaLabel="Edge Curve Style"
-              compact={isMobile}
-            />
-          </>
-        )}
       </div>
     </div>
   );

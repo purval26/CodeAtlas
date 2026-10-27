@@ -102,18 +102,31 @@ export async function fetchTraceFlow(
 export async function askCodeAtlas(
   repositoryId: string,
   question: string,
-  options?: "free" | "paid" | { mode?: "free" | "paid"; model?: string }
+  options?: "free" | "paid" | "custom" | {
+    mode?: "free" | "paid" | "custom";
+    model?: string;
+    apiKey?: string;
+    provider?: string;
+    baseUrl?: string;
+  }
 ): Promise<AskResponse> {
   const mode = typeof options === "string" ? options : options?.mode || "free";
   const model = typeof options === "object" ? options.model : undefined;
+  const apiKey = typeof options === "object" ? options.apiKey : undefined;
+  const provider = typeof options === "object" ? options.provider : undefined;
+  const baseUrl = typeof options === "object" ? options.baseUrl : undefined;
+
   const res = await fetch(`${API_BASE}/api/ask`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repositoryId, question, mode, model }),
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { "x-custom-api-key": apiKey } : {}),
+    },
+    body: JSON.stringify({ repositoryId, question, mode, model, apiKey, provider, baseUrl }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to process question");
+    throw new Error(data.message || data.error || "Failed to process question");
   }
   return res.json();
 }
@@ -122,20 +135,28 @@ export async function askCodeAtlasStream(
   repositoryId: string,
   question: string,
   options: {
-    mode?: "free" | "paid";
+    mode?: "free" | "paid" | "custom";
     model?: string;
+    apiKey?: string;
+    provider?: string;
+    baseUrl?: string;
     onToken: (token: string) => void;
   }
 ): Promise<AskResponse> {
   const mode = options.mode || "free";
   const model = options.model;
+  const apiKey = options.apiKey;
+  const provider = options.provider;
+  const baseUrl = options.baseUrl;
+
   const res = await fetch(`${API_BASE}/api/ask`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "text/event-stream",
+      ...(apiKey ? { "x-custom-api-key": apiKey } : {}),
     },
-    body: JSON.stringify({ repositoryId, question, mode, model, stream: true }),
+    body: JSON.stringify({ repositoryId, question, mode, model, apiKey, provider, baseUrl, stream: true }),
   });
 
   if (!res.ok) {

@@ -21,6 +21,7 @@ import {
   resolveImportPath,
 } from "@/utils/codeTheming";
 import { CustomSelect, CustomSelectOption } from "./CustomSelect";
+import { useSettings } from "@/utils/settings";
 
 interface CodeViewerProps {
   file: CodeFile;
@@ -60,18 +61,9 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   const [matchCase, setMatchCase] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // Selected VS Code theme
-  const [themeId, setThemeId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("codeatlas_code_viewer_theme");
-      if (saved && VSCODE_THEMES.some((t) => t.id === saved)) {
-        return saved;
-      }
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-      return isDark ? "vscode-dark" : "vscode-light";
-    }
-    return "vscode-dark";
-  });
+  // Synchronize theme and editor preferences with unified Settings
+  const [settings, updateSettings] = useSettings();
+  const themeId = settings.codeViewerTheme || "vscode-dark";
 
   const activeTheme: VSCodeTheme = useMemo(() => {
     return VSCODE_THEMES.find((t) => t.id === themeId) || VSCODE_THEMES[0];
@@ -85,10 +77,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   }, []);
 
   const handleThemeChange = (newId: string) => {
-    setThemeId(newId);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("codeatlas_code_viewer_theme", newId);
-    }
+    updateSettings({ codeViewerTheme: newId });
   };
 
   const handleCopy = () => {
@@ -716,7 +705,8 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                   <div
                     style={{
                       flex: 1,
-                      whiteSpace: "pre",
+                      whiteSpace: settings.wordWrap ? "pre-wrap" : "pre",
+                      wordBreak: settings.wordWrap ? "break-word" : "normal",
                       color: activeTheme.colors.text,
                       paddingLeft: "8px",
                     }}

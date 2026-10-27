@@ -10,6 +10,7 @@ import { FileInspector } from "@/components/FileInspector";
 import { CodeViewer } from "@/components/CodeViewer";
 import { AskCodeAtlas } from "@/components/AskCodeAtlas";
 import { TraceFlowModal } from "@/components/TraceFlowModal";
+import { SettingsModal } from "@/components/SettingsModal";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useBreakpoint } from "@/utils/useBreakpoint";
 import {
@@ -42,6 +43,7 @@ export default function Home() {
   // Modals & Panels
   const [isAskOpen, setIsAskOpen] = useState(false);
   const [isTraceOpen, setIsTraceOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Session persistence for asked questions
   const [sessionAskedQuestions, setSessionAskedQuestions] = useState<AskedQuestionSessionItem[]>([]);
@@ -273,6 +275,7 @@ export default function Home() {
             setTraceStartId(selectedNodeId);
             setIsTraceOpen(true);
           }}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           isDark={isDark}
           onToggleTheme={handleToggleTheme}
           isMobile={isMobile}
@@ -740,6 +743,7 @@ export default function Home() {
             onUpdateSessionHistory={setSessionAskedQuestions}
             activeQuestionId={activeSessionQuestionId}
             onSetActiveQuestionId={setActiveSessionQuestionId}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         )}
 
@@ -758,6 +762,11 @@ export default function Home() {
               setTraceEndId(null);
             }}
           />
+        )}
+
+        {/* Settings Modal */}
+        {isSettingsOpen && (
+          <SettingsModal onClose={() => setIsSettingsOpen(false)} />
         )}
       </div>
     </ErrorBoundary>

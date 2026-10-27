@@ -21,7 +21,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { repositoryId, question, mode, model } = body;
+    const { repositoryId, question, mode, model, apiKey, provider, baseUrl } = body;
+
+    // Check optional custom API key in headers as well
+    const headerApiKey = request.headers.get("x-custom-api-key") || undefined;
+    const effectiveApiKey = (typeof apiKey === "string" && apiKey.trim()) || headerApiKey;
+    const effectiveProvider = typeof provider === "string" ? provider.trim() : undefined;
+    const effectiveBaseUrl = typeof baseUrl === "string" ? baseUrl.trim() : undefined;
 
     if (!repositoryId || !question) {
       return NextResponse.json(
@@ -31,8 +37,10 @@ export async function POST(request: Request) {
     }
 
     if (model && typeof model === "string") {
-      const isAllowed = AVAILABLE_MODELS.some((m) => m.id === model);
-      if (!isAllowed) {
+      const isBuiltin = AVAILABLE_MODELS.some((m) => m.id === model);
+      // Valid if it's a built-in model, or if user has custom model identifier with non-empty string
+      const isValidCustom = Boolean(model.trim() && (effectiveApiKey || model.includes("/") || model.length > 2));
+      if (!isBuiltin && !isValidCustom) {
         return NextResponse.json(
           { error: "BAD_REQUEST", message: `Invalid model: '${model}'.` },
           { status: 400 }
@@ -83,6 +91,9 @@ export async function POST(request: Request) {
               {
                 mode: targetMode,
                 model: model ? String(model) : undefined,
+                apiKey: effectiveApiKey,
+                provider: effectiveProvider,
+                baseUrl: effectiveBaseUrl,
               },
               (token: string) => {
                 controller.enqueue(
@@ -126,6 +137,9 @@ export async function POST(request: Request) {
       {
         mode: targetMode,
         model: model ? String(model) : undefined,
+        apiKey: effectiveApiKey,
+        provider: effectiveProvider,
+        baseUrl: effectiveBaseUrl,
       }
     );
 

@@ -152,16 +152,29 @@ export interface AskResponse {
   verifiedCitations: SourceReference[];
   insufficientEvidence?: boolean;
   modelUsed?: string;
-  mode?: "free" | "paid";
+  mode?: "free" | "paid" | "custom";
 }
+
+export interface CustomModelConfig {
+  id: string;
+  name: string;
+  provider?: "openrouter" | "openai" | "gemini" | "anthropic" | "custom";
+  description?: string;
+  context?: string;
+  supportsReasoning?: boolean;
+}
+
+export type ApiProviderType = "openrouter" | "openai" | "gemini" | "anthropic" | "custom";
 
 export interface ModelOption {
   id: string;
   name: string;
-  mode: "free" | "paid";
+  mode: "free" | "paid" | "custom";
   description: string;
   context?: string;
   supportsReasoning?: boolean;
+  isCustom?: boolean;
+  provider?: ApiProviderType;
 }
 
 export const AVAILABLE_MODELS: ModelOption[] = [
@@ -209,7 +222,7 @@ export interface AskedQuestionSessionItem {
   response: AskResponse;
   timestamp: string;
   model: string;
-  mode: "free" | "paid";
+  mode: "free" | "paid" | "custom";
 }
 
 

@@ -15,13 +15,17 @@ import {
   PlusCircle,
   User,
   Bot,
+  Sliders,
+  Cpu,
 } from "lucide-react";
+import { useSettings } from "@/utils/settings";
 
 interface AskCodeAtlasProps {
   repositoryId: string;
   onOpenSourceRange: (filePath: string, startLine: number, endLine: number) => void;
   onTriggerTrace: (startPath?: string, endPath?: string) => void;
   onClose: () => void;
+  onOpenSettings?: () => void;
   sessionHistory?: AskedQuestionSessionItem[];
   onUpdateSessionHistory?: (history: AskedQuestionSessionItem[]) => void;
   activeQuestionId?: string | null;
@@ -37,11 +41,13 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
   onOpenSourceRange,
   onTriggerTrace,
   onClose,
+  onOpenSettings,
   sessionHistory,
   onUpdateSessionHistory,
   activeQuestionId,
   onSetActiveQuestionId,
 }) => {
+  const [settings, updateSettings] = useSettings();
   const history = sessionHistory ?? fallbackSessionHistory;
   const updateHistory = (newHistory: AskedQuestionSessionItem[]) => {
     if (onUpdateSessionHistory) {
@@ -70,11 +76,11 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Free vs Paid Mode toggle and Model Selector
-  const [aiMode, setAiMode] = useState<"free" | "paid">(() => {
+  // Free vs Paid vs Custom Mode toggle and Model Selector
+  const [aiMode, setAiMode] = useState<"free" | "paid" | "custom">(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("codeatlas_ai_mode");
-      if (saved === "free" || saved === "paid") return saved;
+      if (saved === "free" || saved === "paid" || saved === "custom") return saved;
     }
     return "free";
   });
@@ -229,6 +235,9 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
         res = await askCodeAtlasStream(repositoryId, trimmed, {
           mode: aiMode,
           model: selectedModel,
+          apiKey: settings.customApiKey || undefined,
+          provider: settings.customApiProvider,
+          baseUrl: settings.customApiBaseUrl || undefined,
           onToken: (token) => {
             accumulated += token;
             setResponse({
@@ -245,6 +254,9 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
           res = await askCodeAtlas(repositoryId, trimmed, {
             mode: aiMode,
             model: selectedModel,
+            apiKey: settings.customApiKey || undefined,
+            provider: settings.customApiProvider,
+            baseUrl: settings.customApiBaseUrl || undefined,
           });
         } else {
           throw streamErr;
@@ -542,12 +554,29 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
             <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
               <AlertTriangle size={13} style={{ color: "#D97706", flexShrink: 0 }} />
               <span>
-                <strong>OFFLINE MODE:</strong> No <code>OPENROUTER_API_KEY</code> detected in <code>.env</code>. Answering via CodeAtlas Deterministic Synthesizer.
+                <strong>OFFLINE MODE:</strong> No API key configured. Answering via CodeAtlas Deterministic Synthesizer.
               </span>
             </div>
-            <span style={{ fontSize: "10px", color: "#B45309", whiteSpace: "nowrap" }}>
-              Add free OpenRouter key to .env for live Nemotron
-            </span>
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                style={{
+                  height: "24px",
+                  minHeight: "24px",
+                  padding: "0 8px",
+                  fontSize: "10px",
+                  background: "#D97706",
+                  color: "#FFFFFF",
+                  border: "none",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                + ENTER API KEY / ADD MODEL
+              </button>
+            )}
           </div>
         )}
 
@@ -1152,6 +1181,15 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                     boxSizing: "border-box",
                   }}
                 >
+                  {settings.customModels.length > 0 && (
+                    <optgroup label="CUSTOM MODELS (User Configured)">
+                      {settings.customModels.map((cm) => (
+                        <option key={cm.id} value={cm.id}>
+                          [CUSTOM] {cm.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                   <optgroup label="FREE MODELS (OpenRouter)">
                     <option value="nvidia/nemotron-3-ultra-550b-a55b:free">
                       [FREE] Nemotron 3 Ultra 550B
@@ -1172,6 +1210,28 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                     </option>
                   </optgroup>
                 </select>
+
+                {/* Settings shortcut button */}
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    title="Configure Custom Models & API Key in Settings"
+                    style={{
+                      height: "32px",
+                      minHeight: "32px",
+                      padding: "0 10px",
+                      fontSize: "11px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <Sliders size={12} />
+                    <span className="font-mono">CUSTOM MODELS</span>
+                  </button>
+                )}
               </div>
 
               {/* Right side: Send button */}
