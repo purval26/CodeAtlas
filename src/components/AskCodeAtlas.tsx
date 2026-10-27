@@ -1155,7 +1155,7 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
                     aria-label="Paid Model Mode"
                     style={{
                       background: aiMode === "paid" ? "var(--accent)" : "transparent",
-                      color: "#11100F",
+                      color: "var(--ink)",
                       border: "none",
                       padding: "0 8px",
                       fontSize: "11px",
