@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { CodeFile, CodeSymbol } from "@/types";
 import { X, FileCode } from "lucide-react";
 
@@ -17,21 +17,56 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   onClose,
 }) => {
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevFilePathRef = useRef<string>(file.path);
 
-  // Clear stale line refs when active file changes to prevent memory leak
-  useEffect(() => {
+  // Clear stale line refs only when active file path actually changes
+  if (prevFilePathRef.current !== file.path) {
+    prevFilePathRef.current = file.path;
     lineRefs.current = {};
-  }, [file.path]);
+  }
+
+  const scrollToLine = useCallback((targetLine: number, smooth: boolean = false) => {
+    const el = lineRefs.current[targetLine];
+    if (el) {
+      el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
+      return true;
+    }
+    if (scrollContainerRef.current) {
+      const lineHeight = 22;
+      const targetTop = Math.max(0, (targetLine - 1) * lineHeight - scrollContainerRef.current.clientHeight / 2);
+      scrollContainerRef.current.scrollTo({
+        top: targetTop,
+        behavior: smooth ? "smooth" : "auto",
+      });
+      return true;
+    }
+    return false;
+  }, []);
 
   // Auto-scroll to target cited range
   useEffect(() => {
     if (targetLineRange && targetLineRange.startLine) {
-      const el = lineRefs.current[targetLineRange.startLine];
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      const line = targetLineRange.startLine;
+      // Immediate scroll
+      scrollToLine(line, false);
+
+      // Microtask / animation frame retry to ensure DOM layout and dimensions are ready
+      const raf = requestAnimationFrame(() => {
+        scrollToLine(line, false);
+      });
+
+      // Timeout fallback after styles/transitions finish
+      const timer = setTimeout(() => {
+        scrollToLine(line, false);
+      }, 60);
+
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
     }
-  }, [targetLineRange, file.path]);
+  }, [targetLineRange, file.path, scrollToLine]);
 
   // Close on Escape key
   useEffect(() => {
@@ -100,41 +135,36 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
                 style={{
                   fontSize: "13px",
                   fontWeight: 700,
+                  whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
                 }}
-                title={file.path}
               >
                 {file.path}
               </div>
               <div
                 className="font-mono"
                 style={{
-                  fontSize: "11px",
+                  fontSize: "10px",
                   color: "var(--muted)",
-                  display: "flex",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "6px",
                   marginTop: "2px",
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap",
                 }}
               >
-                <span>{file.lineCount} LINES</span>
-                <span>·</span>
-                <span>{file.language.toUpperCase()}</span>
+                <span>
+                  {lines.length} lines ({file.lineCount} total)
+                </span>
+                <span>•</span>
+                <span>{file.language}</span>
                 {targetLineRange && (
-                  <span
-                    style={{
-                      background: "var(--accent)",
-                      color: "#11100F",
-                      padding: "1px 6px",
-                      fontWeight: 700,
-                      fontSize: "10px",
-                    }}
-                  >
-                    TARGET: L{targetLineRange.startLine}–L{targetLineRange.endLine}
-                  </span>
+                  <>
+                    <span>•</span>
+                    <span style={{ color: "var(--ink)", fontWeight: 700 }}>
+                      Lines {targetLineRange.startLine}–{targetLineRange.endLine}
+                    </span>
+                  </>
                 )}
               </div>
             </div>
@@ -142,11 +172,13 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
 
           <button
             onClick={onClose}
-            aria-label="Close Code Viewer"
             style={{
-              padding: "6px 12px",
-              minHeight: "36px",
-              fontSize: "12px",
+              padding: "4px 8px",
+              minHeight: "28px",
+              fontSize: "11px",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
               flexShrink: 0,
             }}
           >
@@ -157,6 +189,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
 
         {/* Code Content with Line Numbers (horizontal scroll inside viewer container only) */}
         <div
+          ref={scrollContainerRef}
           className="font-mono touch-pan-y"
           style={{
             flex: 1,
@@ -247,8 +280,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               <button
                 key={sym.id}
                 onClick={() => {
-                  const el = lineRefs.current[sym.startLine];
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  scrollToLine(sym.startLine, true);
                 }}
                 style={{
                   fontSize: "10px",
