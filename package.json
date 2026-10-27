@@ -1,16 +1,36 @@
 {
   "name": "codeatlas",
   "version": "1.0.0",
+  "description": "Interactive codebase architecture maps & grounded AI intelligence. Structure first. Reason second. Evidence always.",
+  "author": "Purval Radadiya <purvalradadiya@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/purval26/CodeAtlas.git"
+  },
+  "homepage": "https://github.com/purval26/CodeAtlas#readme",
+  "bugs": {
+    "url": "https://github.com/purval26/CodeAtlas/issues"
+  },
+  "keywords": [
+    "codebase-visualization",
+    "architecture-mapping",
+    "ast",
+    "dependency-graph",
+    "reactflow",
+    "nextjs",
+    "typescript",
+    "ai-code-analysis",
+    "code-intelligence",
+    "grounded-qa",
+    "openrouter"
+  ],
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
