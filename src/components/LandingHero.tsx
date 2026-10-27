@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { ArrowRight, Compass } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowRight, Compass, Lock, Globe, FolderGit2 } from "lucide-react";
 import { GOLDEN_DEMO_REPO_URL } from "@/server/shared/constants";
+import { AuthUser, UserRepoItem } from "@/types";
 
 interface LandingHeroProps {
   onAnalyze: (url: string) => void;
   isLoading: boolean;
   error?: string | null;
+  authUser?: AuthUser | null;
+  oauthConfigured?: boolean;
 }
 
 function cleanRepoInput(raw: string): string {
@@ -23,8 +26,32 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   onAnalyze,
   isLoading,
   error,
+  authUser,
+  oauthConfigured = false,
 }) => {
   const [repoPath, setRepoPath] = useState("");
+  const [userRepos, setUserRepos] = useState<UserRepoItem[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [showReposList, setShowReposList] = useState(false);
+
+  useEffect(() => {
+    if (authUser) {
+      setLoadingRepos(true);
+      fetch("/api/auth/repos")
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.statusText))))
+        .then((data) => {
+          if (data?.repos) setUserRepos(data.repos);
+        })
+        .catch((err) => {
+          console.error("Failed to load user repositories:", err);
+        })
+        .finally(() => {
+          setLoadingRepos(false);
+        });
+    } else {
+      setUserRepos([]);
+    }
+  }, [authUser]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +141,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           Turns any public or private JavaScript/TypeScript repository into an interactive, deterministic map of its architecture and dependencies, then provides verifiable answers with clickable line citations.
         </p>
 
-        {/* Input Form with default pre URL https://github.com/ */}
+        {/* Input Form with fixed prefix https://github.com/ */}
         <form onSubmit={handleSubmit} style={{ marginBottom: "16px" }}>
           <div className="hero-form-container">
             <div
@@ -169,6 +196,184 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             </button>
           </div>
         </form>
+
+        {/* Authenticated user repository selector (Private & Public) */}
+        {authUser && (
+          <div
+            style={{
+              marginBottom: "20px",
+              border: "1.5px solid var(--border)",
+              background: "var(--white)",
+              padding: "12px 16px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FolderGit2 size={15} style={{ color: "var(--ink)" }} />
+                <span className="font-mono" style={{ fontSize: "11px", fontWeight: 700 }}>
+                  LOGGED IN AS @{authUser.login} · {userRepos.length} REPOSITORIES
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReposList(!showReposList)}
+                style={{
+                  padding: "3px 10px",
+                  minHeight: "26px",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-dm-mono), monospace",
+                  fontWeight: 700,
+                  background: showReposList ? "var(--ink)" : "var(--paper)",
+                  color: showReposList ? "var(--white)" : "var(--ink)",
+                }}
+              >
+                {showReposList ? "HIDE MY REPOS ▲" : "SELECT MY REPOS (PRIVATE & PUBLIC) ▼"}
+              </button>
+            </div>
+
+            {showReposList && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  maxHeight: "240px",
+                  overflowY: "auto",
+                  border: "1px solid var(--border)",
+                  background: "var(--paper)",
+                }}
+              >
+                {loadingRepos ? (
+                  <div style={{ padding: "12px", textAlign: "center", fontSize: "12px", color: "var(--muted)" }}>
+                    Loading your repositories...
+                  </div>
+                ) : userRepos.length === 0 ? (
+                  <div style={{ padding: "12px", textAlign: "center", fontSize: "12px", color: "var(--muted)" }}>
+                    No repositories found under this account.
+                  </div>
+                ) : (
+                  userRepos.map((repo) => (
+                    <div
+                      key={repo.id}
+                      onClick={() => {
+                        setRepoPath(repo.fullName);
+                        setShowReposList(false);
+                        onAnalyze(repo.htmlUrl);
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        borderBottom: "1px solid var(--border)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        transition: "background 0.1s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--white)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                        {repo.private ? (
+                          <Lock size={13} style={{ color: "#FF9500", flexShrink: 0 }} />
+                        ) : (
+                          <Globe size={13} style={{ color: "var(--muted)", flexShrink: 0 }} />
+                        )}
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "13px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {repo.fullName}
+                        </span>
+                        {repo.description && (
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: "var(--muted)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            — {repo.description}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                        <span
+                          className="font-mono"
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: 800,
+                            padding: "1px 5px",
+                            background: repo.private ? "#FF9500" : "var(--paper)",
+                            color: repo.private ? "#000" : "var(--muted)",
+                            border: "1px solid var(--border)",
+                          }}
+                        >
+                          {repo.private ? "PRIVATE" : "PUBLIC"}
+                        </span>
+                        <span className="font-mono" style={{ fontSize: "10px", fontWeight: 700 }}>
+                          ANALYZE ➔
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Login with GitHub Callout when unauthenticated */}
+        {!authUser && oauthConfigured && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "var(--white)",
+              border: "1.5px solid var(--border)",
+              padding: "10px 16px",
+              marginBottom: "20px",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Lock size={14} style={{ color: "var(--muted)" }} />
+              <span style={{ fontSize: "13px" }}>
+                Need to analyze <strong>private repositories</strong>?
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/api/auth/github";
+              }}
+              className="btn-primary"
+              style={{ minHeight: "32px", padding: "4px 14px", fontSize: "11px", gap: "5px" }}
+            >
+              <FolderGit2 size={12} style={{ color: "var(--accent)" }} />
+              <span>LOGIN WITH GITHUB</span>
+            </button>
+          </div>
+        )}
 
         {/* Error message */}
         {error && (

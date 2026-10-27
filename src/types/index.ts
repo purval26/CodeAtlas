@@ -99,3 +99,30 @@ export interface GraphData {
     totalLines: number;
   };
 }
+
+export interface AuthUser {
+  id: number;
+  login: string;
+  name?: string;
+  avatarUrl: string;
+  htmlUrl?: string;
+}
+
+export interface UserRepoItem {
+  id: number;
+  name: string;
+  fullName: string;
+  private: boolean;
+  htmlUrl: string;
+  description?: string;
+  updatedAt?: string;
+  defaultBranch?: string;
+}
+
+export interface AuthStatusResponse {
+  authenticated: boolean;
+  user: AuthUser | null;
+  oauthConfigured: boolean;
+}
+
+

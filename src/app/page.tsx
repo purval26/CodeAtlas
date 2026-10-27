@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { LandingHero, GOLDEN_DEMO_REPO_URL } from "@/components/LandingHero";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
-import { AnalysisJob, GraphData } from "@/types";
+import { AnalysisJob, GraphData, AuthUser } from "@/types";
 
 export default function Home() {
   const [isDark, setIsDark] = useState(false);
@@ -12,6 +12,34 @@ export default function Home() {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [landingError, setLandingError] = useState<string | null>(null);
+
+  // Authentication state
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [oauthConfigured, setOauthConfigured] = useState(false);
+
+  // Load auth status
+  useEffect(() => {
+    fetch("/api/auth/user")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setAuthUser(data.user);
+          setOauthConfigured(data.oauthConfigured);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load auth status:", err);
+      });
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setAuthUser(null);
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
 
   // Sync theme
   useEffect(() => {
@@ -135,6 +163,9 @@ export default function Home() {
         onLoadDemo={() => handleAnalyze(GOLDEN_DEMO_REPO_URL)}
         isDark={isDark}
         onToggleTheme={handleToggleTheme}
+        authUser={authUser}
+        oauthConfigured={oauthConfigured}
+        onLogout={handleLogout}
       />
 
       <main
@@ -153,6 +184,8 @@ export default function Home() {
             onAnalyze={handleAnalyze}
             isLoading={isAnalyzing}
             error={landingError}
+            authUser={authUser}
+            oauthConfigured={oauthConfigured}
           />
         )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jobManager } from "@/server/jobs";
 import { parseGitHubUrl } from "@/server/ingestion/github";
+import { getSession } from "@/server/auth/session";
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +24,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const job = jobManager.createJob(url);
+    // Check for user session or optional custom token
+    const cookieHeader = request.headers.get("cookie");
+    const authHeader = request.headers.get("authorization");
+    const session = getSession(cookieHeader, authHeader);
+
+    // Support either session OAuth token, custom token in body/header, or server GITHUB_TOKEN
+    const customToken = body?.token || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined);
+    const token = session?.accessToken || customToken || process.env.GITHUB_TOKEN;
+    const userId = session?.user?.id;
+
+    const job = jobManager.createJob(url, token, userId);
 
     return NextResponse.json(
       {

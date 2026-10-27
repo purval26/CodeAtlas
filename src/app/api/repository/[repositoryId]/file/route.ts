@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { jobManager } from "@/server/jobs";
+import { getSession, isAuthorizedForRepo } from "@/server/auth/session";
 
 export async function GET(
   request: Request,
@@ -21,6 +22,20 @@ export async function GET(
     return NextResponse.json(
       { error: "NOT_FOUND", message: `Repository ${repositoryId} not found.` },
       { status: 404 }
+    );
+  }
+
+  const cookieHeader = request.headers.get("cookie");
+  const authHeader = request.headers.get("authorization");
+  const session = getSession(cookieHeader, authHeader);
+
+  if (!isAuthorizedForRepo(session, repoData)) {
+    return NextResponse.json(
+      {
+        error: "UNAUTHORIZED",
+        message: "This repository is private. Please log in with GitHub to access its source files.",
+      },
+      { status: 403 }
     );
   }
 

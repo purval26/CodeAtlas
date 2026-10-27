@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { Repository } from "@/types";
-import { Sun, Moon, Compass, RefreshCw, GitFork, MessageSquare } from "lucide-react";
+import { Repository, AuthUser } from "@/types";
+import { Sun, Moon, Compass, RefreshCw, GitFork, MessageSquare, LogOut, FolderGit2 } from "lucide-react";
 
 interface HeaderProps {
   repository: Repository | null;
@@ -13,6 +13,9 @@ interface HeaderProps {
   isDark: boolean;
   onToggleTheme: () => void;
   isMobile?: boolean;
+  authUser?: AuthUser | null;
+  oauthConfigured?: boolean;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +27,9 @@ export const Header: React.FC<HeaderProps> = ({
   isDark,
   onToggleTheme,
   isMobile = false,
+  authUser,
+  oauthConfigured = false,
+  onLogout,
 }) => {
   return (
     <header
@@ -188,6 +194,69 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{isMobile ? "DEMO" : "TRY DEMO"}</span>
           </button>
         )}
+
+        {/* User Auth or GitHub Login button */}
+        {authUser ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <img
+              src={authUser.avatarUrl}
+              alt={authUser.login}
+              style={{
+                width: "28px",
+                height: "28px",
+                border: "1.5px solid var(--border)",
+                objectFit: "cover",
+              }}
+              title={`Logged in as ${authUser.login}`}
+            />
+            {!isMobile && (
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--ink)",
+                  maxWidth: "90px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                @{authUser.login}
+              </span>
+            )}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title="Log out from GitHub"
+                aria-label="Logout"
+                style={{ padding: "4px 8px", minHeight: "34px", fontSize: "11px", gap: "4px" }}
+              >
+                <LogOut size={12} />
+                {!isMobile && <span>LOGOUT</span>}
+              </button>
+            )}
+          </div>
+        ) : oauthConfigured ? (
+          <button
+            onClick={() => {
+              window.location.href = "/api/auth/github";
+            }}
+            style={{
+              padding: isMobile ? "6px 10px" : "6px 12px",
+              minHeight: "36px",
+              fontSize: "11px",
+              gap: "5px",
+              background: "var(--ink)",
+              color: "var(--white)",
+              border: "1.5px solid var(--ink)",
+            }}
+            title="Sign in with GitHub to analyze private repositories"
+          >
+            <FolderGit2 size={13} style={{ color: "var(--accent)" }} />
+            <span>{isMobile ? "LOGIN" : "LOGIN GITHUB"}</span>
+          </button>
+        ) : null}
 
         {/* Theme toggle */}
         <button

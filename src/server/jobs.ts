@@ -13,6 +13,8 @@ export interface StoredRepoData {
   repository: Repository;
   parsedFiles: Map<string, ParsedFileResult>;
   graphData: GraphData;
+  ownerUserId?: number;
+  authorizedUserIds?: Set<number>;
 }
 
 interface StoredRepoEntry {
@@ -25,6 +27,7 @@ interface StoredJobEntry {
   job: AnalysisJob;
   createdAt: number;
   githubToken?: string;
+  userId?: number;
 }
 
 export class JobManager {
@@ -93,7 +96,7 @@ export class JobManager {
     });
   }
 
-  public createJob(url: string, githubToken?: string): AnalysisJob {
+  public createJob(url: string, githubToken?: string, userId?: number): AnalysisJob {
     this.pruneExpired();
 
     const id = `job_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
@@ -107,7 +110,7 @@ export class JobManager {
       createdAt: nowIso,
       updatedAt: nowIso,
     };
-    this.jobs.set(id, { job, createdAt: Date.now(), githubToken });
+    this.jobs.set(id, { job, createdAt: Date.now(), githubToken, userId });
 
     // Process asynchronously without blocking the response
     setImmediate(() => {
@@ -246,10 +249,17 @@ export class JobManager {
       const graphData = buildDependencyGraph(repository, parsedFiles, resolver);
 
       // Store in memory
+      const authorizedUserIds = new Set<number>();
+      if (entry.userId !== undefined) {
+        authorizedUserIds.add(entry.userId);
+      }
+
       this.storeRepositoryData(repository.id, {
         repository,
         parsedFiles,
         graphData,
+        ownerUserId: entry.userId,
+        authorizedUserIds,
       });
 
       await new Promise((r) => setTimeout(r, 60));
