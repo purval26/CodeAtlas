@@ -32,7 +32,7 @@ import {
   PKG_WIDTH,
   PKG_HEIGHT,
 } from "@/utils/layout";
-import { FileCode, Package, Focus, Maximize2 } from "lucide-react";
+import { FileCode, Package, Focus, Maximize2, GitFork } from "lucide-react";
 import { useSettings } from "@/utils/settings";
 import { CustomSelect, CustomSelectOption } from "./CustomSelect";
 
@@ -60,6 +60,7 @@ interface AtlasCanvasProps {
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
   onClearTrace?: () => void;
+  onOpenTrace?: () => void;
   tracePathNodeIds?: string[];
   tracePathEdgeIds?: string[];
   isMobile?: boolean;
@@ -448,6 +449,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   selectedNodeId,
   onSelectNode,
   onClearTrace,
+  onOpenTrace,
   tracePathNodeIds = [],
   tracePathEdgeIds = [],
   isMobile = false,
@@ -1072,6 +1074,37 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
                 −
               </button>
             </div>
+
+            {onOpenTrace && (
+              <>
+                <div style={{ width: "1px", height: "20px", background: "var(--border)", margin: "0 2px" }} />
+                <button
+                  type="button"
+                  onClick={onOpenTrace}
+                  title="Trace dependency flow between components"
+                  aria-label="Trace dependency flow"
+                  style={{
+                    background: "var(--white)",
+                    color: "var(--ink)",
+                    border: "1px solid var(--border)",
+                    padding: "0 10px",
+                    fontSize: "11px",
+                    fontFamily: "'DM Mono', monospace",
+                    fontWeight: 700,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    cursor: "pointer",
+                    height: "34px",
+                    minHeight: "34px",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <GitFork size={13} />
+                  <span>TRACE</span>
+                </button>
+              </>
+            )}
           </div>
         </Panel>
       </FlowComponent>

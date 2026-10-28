@@ -399,6 +399,10 @@ export default function Home() {
                       selectedNodeId={selectedNodeId}
                       onSelectNode={handleSelectNode}
                       onClearTrace={handleClearTrace}
+                      onOpenTrace={() => {
+                        setTraceStartId(selectedNodeId);
+                        setIsTraceOpen(true);
+                      }}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
                     />
@@ -442,6 +446,10 @@ export default function Home() {
                       selectedNodeId={selectedNodeId}
                       onSelectNode={handleSelectNode}
                       onClearTrace={handleClearTrace}
+                      onOpenTrace={() => {
+                        setTraceStartId(selectedNodeId);
+                        setIsTraceOpen(true);
+                      }}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
                       isTablet={true}
@@ -533,6 +541,10 @@ export default function Home() {
                       selectedNodeId={selectedNodeId}
                       onSelectNode={handleSelectNode}
                       onClearTrace={handleClearTrace}
+                      onOpenTrace={() => {
+                        setTraceStartId(selectedNodeId);
+                        setIsTraceOpen(true);
+                      }}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
                       isMobile={true}

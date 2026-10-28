@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { GraphData, GraphNode } from "@/types";
-import { FileText, ArrowRight, ArrowLeft, Code2, Package, X } from "lucide-react";
+import { FileText, ArrowRight, ArrowLeft, Code2, Package, X, GitFork } from "lucide-react";
 
 interface FileInspectorProps {
   selectedNode: GraphNode | null;
@@ -19,6 +19,8 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
   graphData,
   onSelectNode,
   onOpenSource,
+  onStartTrace,
+  onEndTrace,
   onClose,
   isMobileSheet = false,
 }) => {
@@ -163,11 +165,30 @@ export const FileInspector: React.FC<FileInspectorProps> = ({
             <button
               onClick={() => onOpenSource(selectedNode.path!)}
               className="btn-primary"
-              style={{ fontSize: "11px", padding: "6px 14px", height: "36px", minHeight: "36px", width: "100%", boxSizing: "border-box" }}
+              style={{ fontSize: "11px", padding: "6px 14px", height: "36px", minHeight: "36px", flex: 1, boxSizing: "border-box" }}
             >
               <FileText size={13} />
               <span>VIEW SOURCE</span>
             </button>
+            {onStartTrace && (
+              <button
+                onClick={() => onStartTrace(selectedNode.id)}
+                style={{
+                  fontSize: "11px",
+                  padding: "6px 12px",
+                  height: "36px",
+                  minHeight: "36px",
+                  boxSizing: "border-box",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+                title="Trace dependency flow from this component"
+              >
+                <GitFork size={13} />
+                <span>TRACE</span>
+              </button>
+            )}
           </div>
         )}
       </div>
