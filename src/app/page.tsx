@@ -300,6 +300,7 @@ export default function Home() {
         <main
           style={{
             flex: 1,
+            height: "100%",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -330,7 +331,7 @@ export default function Home() {
           )}
 
           {graphData && (
-            <div style={{ display: "flex", width: "100%", height: "100%", position: "relative", minHeight: 0 }}>
+            <div style={{ display: "flex", width: "100%", height: "100%", flex: 1, position: "relative", minHeight: 0, minWidth: 0 }}>
               {/* DESKTOP LAYOUT (>= 1100px): Explorer + Atlas + Inspector */}
               {isDesktop && (
                 <>
@@ -340,13 +341,15 @@ export default function Home() {
                     onSelectNode={(id) => setSelectedNodeId(id)}
                   />
 
-                  <AtlasCanvas
-                    graphData={graphData}
-                    selectedNodeId={selectedNodeId}
-                    onSelectNode={(id) => setSelectedNodeId(id)}
-                    tracePathNodeIds={tracePathNodeIds}
-                    tracePathEdgeIds={tracePathEdgeIds}
-                  />
+                  <div style={{ flex: 1, height: "100%", width: "100%", position: "relative", minHeight: 0, minWidth: 0, display: "flex" }}>
+                    <AtlasCanvas
+                      graphData={graphData}
+                      selectedNodeId={selectedNodeId}
+                      onSelectNode={(id) => setSelectedNodeId(id)}
+                      tracePathNodeIds={tracePathNodeIds}
+                      tracePathEdgeIds={tracePathEdgeIds}
+                    />
+                  </div>
 
                   <FileInspector
                     selectedNode={selectedNode}

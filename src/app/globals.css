@@ -138,6 +138,14 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* React Flow styling overrides */
+.react-flow,
+.react-flow__renderer,
+.react-flow-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
 .react-flow__background {
   background-color: var(--canvas-bg) !important;
 }

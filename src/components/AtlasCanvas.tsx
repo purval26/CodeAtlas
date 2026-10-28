@@ -895,8 +895,10 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   );
 
   const handleFlowError = useCallback((id: string, message: string) => {
-    // Suppress harmless edge fallback warning #011 and HMR type-identity warning #002
-    if (id === "011" || id === "002") return;
+    // Suppress harmless edge fallback warning #011, HMR type-identity warning #002,
+    // and initial mount container measurement warning #004 (handled automatically by ResizeObserver)
+    if (id === "011" || id === "002" || id === "004") return;
+    if (typeof message === "string" && message.includes("needs a width and a height")) return;
     console.warn(`[React Flow]: ${message}`);
   }, []);
 
@@ -908,7 +910,17 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      style={{ flex: 1, height: "100%", width: "100%", position: "relative", minHeight: 0 }}
+      className="react-flow-wrapper"
+      style={{
+        flex: 1,
+        height: "100%",
+        width: "100%",
+        position: "relative",
+        minHeight: 0,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
       <FlowComponent
         nodes={initialNodes}
@@ -927,7 +939,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         zoomOnPinch={true}
         zoomOnScroll={true}
         panOnDrag={true}
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", flex: 1 }}
       >
         <Background gap={18} size={1} color="var(--border)" />
 
