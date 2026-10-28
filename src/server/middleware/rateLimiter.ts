@@ -47,26 +47,32 @@ export class MemoryRateLimiter {
 }
 
 export function getClientIp(request: Request): string {
-  // Only platform-added headers are trusted. x-forwarded-for is client controlled.
-  const forwarded = request.headers.get("x-vercel-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
+  // Cloudflare header (Render and custom domains using Cloudflare)
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+
+  // Vercel proxy header
+  const vercelIp = request.headers.get("x-vercel-forwarded-for");
+  if (vercelIp) return vercelIp.split(",")[0].trim();
+
+  // Standard reverse proxy headers
   const realIp = request.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
-  }
+  if (realIp) return realIp.trim();
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+
   return "127.0.0.1";
 }
 
 export const analyzeRateLimiter = new MemoryRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15,
-  message: "Rate limit exceeded for repository analysis (15 requests per 15 minutes). Please try again later.",
+  max: 30,
+  message: "Rate limit exceeded for repository analysis (30 requests per 15 minutes). Please try again shortly.",
 });
 
 export const askRateLimiter = new MemoryRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  max: 25,
-  message: "Rate limit exceeded for repository questions (25 requests per minute). Please try again shortly.",
+  max: 30,
+  message: "Rate limit exceeded for repository questions (30 requests per minute). Please try again shortly.",
 });

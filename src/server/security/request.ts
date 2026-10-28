@@ -10,15 +10,81 @@ export function hasAcceptableJsonBody(request: Request): boolean {
 }
 
 /**
- * Browser-originated mutation requests must be same-origin. Requests without an
- * Origin header are permitted for non-browser clients (for example the CLI).
+ * Browser-originated mutation requests must originate from a trusted origin.
+ * Requests without an Origin header are permitted for non-browser clients (such as the CLI or curl).
+ * Handles reverse proxy TLS termination and cloud hosting hosts (Render, Vercel).
  */
 export function hasTrustedOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return true;
 
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    const originUrl = new URL(origin);
+    const originHost = originUrl.host.toLowerCase();
+    const originHostname = originUrl.hostname.toLowerCase();
+
+    // 1. Direct match with request.url (standard same-origin)
+    try {
+      const requestUrl = new URL(request.url);
+      if (originUrl.origin === requestUrl.origin) return true;
+      if (originHost === requestUrl.host.toLowerCase()) return true;
+      if (originHostname === requestUrl.hostname.toLowerCase()) return true;
+    } catch {
+      // Ignore request.url parse issues
+    }
+
+    // 2. Reverse proxy headers: x-forwarded-host and host
+    // When deployed behind a reverse proxy (e.g. Render, Vercel, Cloudflare, AWS),
+    // SSL is terminated at the edge and internal requests may have http:// or internal ports.
+    const forwardedHost = request.headers.get("x-forwarded-host");
+    if (forwardedHost) {
+      const clientHost = forwardedHost.split(",")[0].trim().toLowerCase();
+      if (originHost === clientHost || originHostname === clientHost.split(":")[0]) {
+        return true;
+      }
+    }
+
+    const hostHeader = request.headers.get("host");
+    if (hostHeader) {
+      const serverHost = hostHeader.split(",")[0].trim().toLowerCase();
+      if (originHost === serverHost || originHostname === serverHost.split(":")[0]) {
+        return true;
+      }
+    }
+
+    // 3. User-configured allowed origins (for separate frontend/backend deployments)
+    const allowedEnv =
+      process.env.ALLOWED_ORIGINS ||
+      process.env.FRONTEND_URL ||
+      process.env.NEXT_PUBLIC_APP_URL;
+    if (allowedEnv) {
+      const originsList = allowedEnv
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      for (const item of originsList) {
+        if (item === origin.toLowerCase() || item === originHost || item === originHostname) {
+          return true;
+        }
+      }
+    }
+
+    // 4. Localhost and loopback for local development/testing
+    if (
+      originHostname === "localhost" ||
+      originHostname === "127.0.0.1" ||
+      originHostname === "::1" ||
+      originHostname.endsWith(".localhost")
+    ) {
+      return true;
+    }
+
+    // 5. Cloud deployment domains (Render and Vercel services)
+    if (originHostname.endsWith(".onrender.com") || originHostname.endsWith(".vercel.app")) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }

@@ -9,7 +9,7 @@ import type {
   SearchResult,
 } from "@/types";
 
-const API_BASE = "";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
 export async function analyzeRepository(url: string): Promise<{ jobId: string; status: string }> {
   const res = await fetch(`${API_BASE}/api/analyze`, {
