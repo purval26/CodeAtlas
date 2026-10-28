@@ -3,10 +3,7 @@ import { SourceReference } from "@/types";
 import { ParsedFileResult } from "../parser/ast";
 
 function normalizePosix(p: string): string {
-  let norm = p.replace(/\\/g, "/").trim();
-  if (norm.startsWith("./")) {
-    norm = norm.slice(2);
-  }
+  let norm = p.replace(/\\/g, "/").trim().replace(/^\.?\/+/, "");
   return path.posix.normalize(norm);
 }
 
@@ -67,20 +64,20 @@ export function validateCitations(
       continue;
     }
 
-    // 4. Confirm endLine >= startLine
+    const maxLine = targetFile.file.lineCount;
+    if (startLine > maxLine) {
+      continue; // Line falls completely outside stored file
+    }
+
+    // 4. Confirm endLine >= startLine and clamp to maxLine
     const rawEnd = raw.endLine !== undefined ? Math.floor(Number(raw.endLine)) : startLine;
-    const endLine = isNaN(rawEnd) ? startLine : rawEnd;
-    if (endLine < startLine) {
+    const endLineCandidate = isNaN(rawEnd) ? startLine : rawEnd;
+    if (endLineCandidate < startLine) {
       continue;
     }
+    const endLine = Math.min(endLineCandidate, maxLine);
 
-    // 5. Confirm endLine <= stored lineCount
-    const maxLine = targetFile.file.lineCount;
-    if (endLine > maxLine) {
-      continue; // Line falls outside stored file
-    }
-
-    // 6. Deduplicate
+    // 5. Deduplicate
     const key = `${resolvedPath}:${startLine}:${endLine}`;
     if (!seen.has(key)) {
       seen.add(key);

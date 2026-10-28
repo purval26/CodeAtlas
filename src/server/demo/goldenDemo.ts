@@ -95,9 +95,12 @@ export function getGoldenDemoAnswer(
     return GOLDEN_LOCATION_ANSWER;
   }
 
-  // 3. User login flow query
+  // 3. User login flow query (handles "logs in", "log in", "login", etc.)
   if (
-    (qLower.includes("log in") || qLower.includes("login")) &&
+    (/\blog(s)?\s*in\b|\blogin\b/i.test(question) ||
+      qLower.includes("log in") ||
+      qLower.includes("logs in") ||
+      qLower.includes("login")) &&
     !qLower.includes("where") &&
     !qLower.includes("depend")
   ) {

@@ -217,7 +217,7 @@ export class JobManager {
       let parsedCount = 0;
 
       for (const file of files) {
-        if (file.path === "tsconfig.json" || file.path === "package.json") {
+        if (file.path.endsWith(".json")) {
           continue;
         }
 
@@ -240,9 +240,7 @@ export class JobManager {
       }
 
       if (parsedCount === 0 && files.length > 0) {
-        const nonConfigFiles = files.filter(
-          (f) => f.path !== "tsconfig.json" && f.path !== "package.json"
-        );
+        const nonConfigFiles = files.filter((f) => !f.path.endsWith(".json"));
         if (nonConfigFiles.length > 0) {
           throw new Error(
             `Failed to parse code files (${nonConfigFiles.length} files detected). Ensure they are valid TypeScript/JavaScript.`

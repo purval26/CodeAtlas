@@ -580,7 +580,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           >
             <span>ZUSTAND · STATE</span>
           </motion.button>
-          <motion.button
+          {/* <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="button"
@@ -617,7 +617,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             }}
           >
             <span>REACT · UI</span>
-          </motion.button>
+          </motion.button> */}
         </motion.div>
 
         {/* Live Architecture & Evidence Teaser Box */}
@@ -625,7 +625,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           style={{
             border: "2px solid var(--ink)",
             background: "var(--white)",
@@ -794,7 +794,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                 initial={{ opacity: 0, y: 14 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] as const }}
+                transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
                 whileHover={{
                   y: -4,
                   boxShadow: "4px 4px 0px rgba(0,0,0,0.18)",

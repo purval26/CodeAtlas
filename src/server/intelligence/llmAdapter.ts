@@ -269,24 +269,50 @@ export class LlmAdapter {
     mode: "free" | "paid" | "custom"
   ): AskResponse {
     const { answer, rawCitations } = this.parseRawResponse(rawOutput, retrieval);
-    const verifiedCitations = validateCitations(rawCitations, parsedFiles).filter((citation) =>
-      retrieval.snippets.some(
+    const validated = validateCitations(rawCitations, parsedFiles);
+    const verifiedCitations: SourceReference[] = [];
+    const seen = new Set<string>();
+
+    for (const citation of validated) {
+      // Find matching retrieved snippet with intersecting line range
+      const matchingSnippet = retrieval.snippets.find(
         (snippet) =>
           snippet.filePath === citation.filePath &&
-          citation.startLine >= snippet.startLine &&
-          citation.endLine <= snippet.endLine
-      )
-    );
+          Math.max(citation.startLine, snippet.startLine) <= Math.min(citation.endLine, snippet.endLine)
+      );
+
+      if (matchingSnippet) {
+        // Clamp to the intersecting visible range
+        const startLine = Math.max(citation.startLine, matchingSnippet.startLine);
+        const endLine = Math.min(citation.endLine, matchingSnippet.endLine);
+        const key = `${citation.filePath}:${startLine}:${endLine}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          verifiedCitations.push({
+            filePath: citation.filePath,
+            startLine,
+            endLine,
+          });
+        }
+      } else if (retrieval.snippets.length === 0) {
+        verifiedCitations.push(citation);
+      }
+    }
 
     const hasExplicitInsufficient =
       answer.trim().startsWith("INSUFFICIENT EVIDENCE") ||
       answer.includes("INSUFFICIENT EVIDENCE:") ||
       answer.toLowerCase().includes("could not find enough repository evidence");
 
-    if (hasExplicitInsufficient || verifiedCitations.length === 0) {
+    const isInsufficient =
+      hasExplicitInsufficient ||
+      retrieval.insufficientEvidence ||
+      retrieval.snippets.length === 0;
+
+    if (hasExplicitInsufficient) {
       return {
         answer:
-          "INSUFFICIENT EVIDENCE: CodeAtlas could not verify this answer against the retrieved repository source.",
+          "INSUFFICIENT EVIDENCE: CodeAtlas could not find enough repository evidence to answer this confidently.",
         verifiedCitations: [],
         insufficientEvidence: true,
         modelUsed,
@@ -297,7 +323,7 @@ export class LlmAdapter {
     return {
       answer,
       verifiedCitations,
-      insufficientEvidence: false,
+      insufficientEvidence: isInsufficient,
       modelUsed,
       mode,
     };
@@ -862,6 +888,11 @@ export class LlmAdapter {
     if (goldenDemoAnswer) {
       rawOutput = goldenDemoAnswer;
       modelUsed = "codeatlas/deterministic-synthesizer";
+      const chunkSize = 20;
+      for (let i = 0; i < rawOutput.length; i += chunkSize) {
+        onToken?.(rawOutput.slice(i, i + chunkSize));
+        await new Promise((r) => setTimeout(r, 6));
+      }
     } else if (hasEffectiveKey) {
       if (effectiveProvider === "openrouter" || effectiveProvider === "custom") {
         const effort = this.determineEffort(question);
@@ -871,7 +902,7 @@ export class LlmAdapter {
           effort,
           targetModel,
           mode,
-          undefined,
+          onToken,
           customApiKey,
           customBaseUrl
         );
@@ -880,26 +911,26 @@ export class LlmAdapter {
       } else if (effectiveProvider === "gemini") {
         rawOutput = await this.callGemini(question, retrieval.contextText);
         modelUsed = `google/${process.env.GEMINI_MODEL || "gemini-2.0-flash"}`;
+        onToken?.(rawOutput);
       } else if (effectiveProvider === "openai") {
         rawOutput = await this.callOpenAI(question, retrieval.contextText);
         modelUsed = "openai/gpt-4o-mini";
+        onToken?.(rawOutput);
       } else {
         rawOutput = this.deterministicSynthesizer(question, retrieval, parsedFiles);
         modelUsed = "codeatlas/deterministic-synthesizer";
+        onToken?.(rawOutput);
       }
     } else {
       rawOutput = this.deterministicSynthesizer(question, retrieval, parsedFiles);
       modelUsed = "codeatlas/deterministic-synthesizer";
       const chunkSize = 20;
       for (let i = 0; i < rawOutput.length; i += chunkSize) {
+        onToken?.(rawOutput.slice(i, i + chunkSize));
         await new Promise((r) => setTimeout(r, 6));
       }
     }
 
-    const response = this.finalizeGroundedAnswer(rawOutput, retrieval, parsedFiles, modelUsed, mode);
-    // Do not stream unvalidated model text. A single verified payload still
-    // uses the SSE API while ensuring temporary UI state is never ungrounded.
-    onToken?.(response.answer);
-    return response;
+    return this.finalizeGroundedAnswer(rawOutput, retrieval, parsedFiles, modelUsed, mode);
   }
 }

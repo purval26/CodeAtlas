@@ -165,7 +165,7 @@ export class DependencyResolver {
     }
 
     // 3. Check if baseUrl allows root-relative import e.g. import 'src/foo'
-    if (this.aliasConfig.baseUrl && this.aliasConfig.baseUrl !== ".") {
+    if (this.aliasConfig.baseUrl) {
       const candidate = normalizePosix(
         path.posix.join(this.aliasConfig.baseUrl, cleanSpecifier)
       );

@@ -46,12 +46,15 @@ export function parseSourceFile(
   };
 
   const scriptTarget = ts.ScriptTarget.Latest;
+  const isJson = path.endsWith(".json");
   const scriptKind = path.endsWith(".tsx")
     ? ts.ScriptKind.TSX
     : path.endsWith(".ts")
     ? ts.ScriptKind.TS
     : path.endsWith(".jsx")
     ? ts.ScriptKind.JSX
+    : isJson
+    ? ts.ScriptKind.JSON
     : ts.ScriptKind.JS;
 
   const sourceFile = ts.createSourceFile(
@@ -62,16 +65,18 @@ export function parseSourceFile(
     scriptKind
   );
 
-  const sourceDiagnostics = (sourceFile as ts.SourceFile & {
-    parseDiagnostics?: readonly ts.DiagnosticWithLocation[];
-  }).parseDiagnostics || [];
-  const syntaxErrors = sourceDiagnostics.filter(
-    (diagnostic: ts.DiagnosticWithLocation) => diagnostic.category === ts.DiagnosticCategory.Error
-  );
-  if (syntaxErrors.length > 0) {
-    const first = syntaxErrors[0];
-    const position = first.start === undefined ? "" : ` at line ${sourceFile.getLineAndCharacterOfPosition(first.start).line + 1}`;
-    throw new Error(`TypeScript parser rejected source${position}: ${ts.flattenDiagnosticMessageText(first.messageText, " ")}`);
+  if (!isJson) {
+    const sourceDiagnostics = (sourceFile as ts.SourceFile & {
+      parseDiagnostics?: readonly ts.DiagnosticWithLocation[];
+    }).parseDiagnostics || [];
+    const syntaxErrors = sourceDiagnostics.filter(
+      (diagnostic: ts.DiagnosticWithLocation) => diagnostic.category === ts.DiagnosticCategory.Error
+    );
+    if (syntaxErrors.length > 0) {
+      const first = syntaxErrors[0];
+      const position = first.start === undefined ? "" : ` at line ${sourceFile.getLineAndCharacterOfPosition(first.start).line + 1}`;
+      throw new Error(`TypeScript parser rejected source${position}: ${ts.flattenDiagnosticMessageText(first.messageText, " ")}`);
+    }
   }
 
   const imports: ExtractedImport[] = [];
@@ -146,7 +151,7 @@ export function parseSourceFile(
       });
     }
 
-    // 2. Export Declarations with module specifier: export { x } from 'y'
+    // 2. Export Declarations with module specifier: export { x } from 'y', export * from 'y', export * as ns from 'y'
     if (ts.isExportDeclaration(node)) {
       if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         const line = getLine(node.getStart());
@@ -156,6 +161,11 @@ export function parseSourceFile(
             names.push(elem.name.text);
             exports.push(elem.name.text);
           }
+        } else if (node.exportClause && ts.isNamespaceExport(node.exportClause)) {
+          names.push(`* as ${node.exportClause.name.text}`);
+          exports.push(node.exportClause.name.text);
+        } else if (!node.exportClause) {
+          names.push("*");
         }
         imports.push({
           specifier: node.moduleSpecifier.text,
@@ -168,6 +178,8 @@ export function parseSourceFile(
         for (const elem of node.exportClause.elements) {
           exports.push(elem.name.text);
         }
+      } else if (node.exportClause && ts.isNamespaceExport(node.exportClause)) {
+        exports.push(node.exportClause.name.text);
       }
     }
 
@@ -263,11 +275,15 @@ export function parseSourceFile(
           const name = decl.name.text;
           const startLine = getLine(decl.getStart());
           const endLine = getLine(decl.getEnd());
+          const isFn =
+            decl.initializer &&
+            (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer));
+          const kind = isFn ? "function" : "variable";
           symbols.push({
-            id: `${fileId}:var:${name}:${startLine}`,
+            id: `${fileId}:${isFn ? "fn" : "var"}:${name}:${startLine}`,
             fileId,
             name,
-            kind: "variable",
+            kind,
             startLine,
             endLine,
           });

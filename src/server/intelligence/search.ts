@@ -16,9 +16,9 @@ const MAX_QUERY_TERMS = 16;
 const MAX_TERM_LENGTH = 80;
 const MAX_LINE_MATCHES_PER_FILE = 8;
 
-/** Normalize user input into bounded, deterministic lexical terms. */
+/** Normalize user input into bounded, deterministic lexical terms with root stem expansion. */
 export function tokenizeSearchQuery(query: string): string[] {
-  return Array.from(
+  const baseTokens = Array.from(
     new Set(
       query
         .normalize("NFKC")
@@ -28,6 +28,28 @@ export function tokenizeSearchQuery(query: string): string[] {
         .slice(0, MAX_QUERY_TERMS) || []
     )
   );
+
+  const expanded = new Set<string>();
+  for (const term of baseTokens) {
+    expanded.add(term);
+    // Common code stems & prefixes
+    if (term.startsWith("auth") && term.length > 4) {
+      expanded.add("auth");
+    }
+    if (term.endsWith("ation") && term.length > 6) {
+      expanded.add(term.slice(0, -5)); // e.g. authorization -> authoriz
+    } else if (term.endsWith("ing") && term.length > 5) {
+      expanded.add(term.slice(0, -3)); // e.g. parsing -> pars
+    } else if (term.endsWith("ed") && term.length > 4) {
+      expanded.add(term.slice(0, -2)); // e.g. parsed -> pars
+    } else if (term.endsWith("ies") && term.length > 5) {
+      expanded.add(term.slice(0, -3) + "y"); // e.g. dependencies -> dependency
+    } else if (term.endsWith("s") && term.length > 3) {
+      expanded.add(term.slice(0, -1)); // e.g. components -> component
+    }
+  }
+
+  return Array.from(expanded).slice(0, MAX_QUERY_TERMS);
 }
 
 function countMatchedTerms(text: string, terms: string[]): number {
