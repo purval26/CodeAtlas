@@ -43,5 +43,21 @@ ehthumbs.db
 
 # Local Prototype & Scratch directories
 CodeAtlas-Prototype/
+FableCut/
 *.tsbuildinfo
 next-env.d.ts
+
+# Remotion & Media generation scratch
+remotion/
+remotion.config.ts
+motion_graphics/
+generated_audio*/
+*.mp4
+*.wav
+*.mp3
+assemble_fablecut_master.js
+generate_export_audio.js
+generate_speech.js
+merge_audio_video.js
+render_master_demo.js
+.agents/

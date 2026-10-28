@@ -45,9 +45,12 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
 - **Camera Controls**: Zoom in/out, fit to viewport, and auto-focus centering camera tracking.
 
 ### 2. Trace Flow (Dependency Path Analysis)
-- Computes the shortest dependency path between any two source files or package modules using Dijkstra / BFS.
-- Visually illuminates the entire trace path on the canvas with animated directional flow.
-- Displays human-readable, step-by-step explanations of how control or data flows from source to destination.
+- **Shortest Path Graph Traversal**: Computes the shortest dependency chain between any two source files or external package modules using Dijkstra / BFS.
+- **Enriched Step Details (WHAT & WHERE)**: Every hop exposes the exact imported symbols (`importedSymbols`), line numbers (`line`), and source code statements (`codeSnippet`) directly extracted from the TypeScript AST.
+- **Automated Flow Synthesis**: High-level natural language summary explaining the multi-hop dependency bridge.
+- **Reverse Dependency Detection**: If no forward path exists, the engine automatically tests for reverse flow and provides a 1-click **"SWAP DIRECTION"** button to trace the upstream dependent flow.
+- **Contextual Placements**: Accessible directly from the **Atlas Canvas toolbar** beside camera controls, from the **File Inspector** (`[TRACE]`), and via mobile quick docks.
+- **Selection Auto-Reset**: Selecting another file or clicking the canvas background resets trace highlights cleanly back to their original background colors.
 
 ### 3. Ask CodeAtlas (Grounded Architectural Intelligence)
 - Ask natural language questions about state management, component lifecycles, authentication flows, or data pipelines.
@@ -80,10 +83,10 @@ Traditional AI coding assistants often hallucinate file paths, imports, and comp
 - **1-Click Model Presets**: Instantly add popular reasoning and coding models.
 - **Multiple Providers**: Supports OpenRouter, OpenAI, Google Gemini, Anthropic, and local OpenAI-compatible endpoints (Ollama / vLLM / LocalAI).
 
-### 6. Centralized Preferences & Settings
-- Comprehensive Swiss Brutalist modal accessible via the header **SETTINGS** button or Ask CodeAtlas shortcuts.
-- Centralizes all AI models, API keys, Graph Layout algorithms, Edge curves, Density filters, Code Viewer themes, and Light/Dark modes.
-- Instant synchronization across all UI components via a reactive event bus without requiring page reloads.
+### 6. Unified Navigation & Centralized Preferences
+- **Unified Account & Settings Dropdown**: Consolidates GitHub OAuth sign-in/sign-out, instant Light/Dark theme switching, and the Settings modal into a clean top-right menu.
+- **Hierarchical Repository Header**: Displays the repository owner and name on top with an architectural language badge (`TypeScript`, `TSX`) stacked neatly underneath.
+- **Comprehensive Settings Modal**: Configure AI models, API keys, Graph Layout algorithms (Sugiyama / Cluster / Radial), Edge curves, Density filters, Code Viewer themes, and Light/Dark modes with real-time reactivity.
 
 ### 7. Responsive Mobile & Tablet Experience
 - Optimized layout for mobile phones, tablets, and wide desktop screens.
@@ -239,13 +242,13 @@ CodeAtlas/
 
 Want to test CodeAtlas immediately? Follow the prepared Golden Demo path:
 
-1. Launch CodeAtlas and click **TRY DEMO** (or input `https://github.com/purval26/CodeAtlas-Prototype`).
+1. Launch CodeAtlas and click **TRY DEMO** (loads the instant zero-latency specimen repository).
 2. The interactive **Atlas Canvas** renders the architecture with clusters and layered dependencies.
-3. Select `src/features/auth/Login.tsx` in the file tree or canvas to view its incoming and outgoing imports.
-4. Click **TRACE** in the top navigation:
-   - Start: `Login.tsx`
-   - Destination: `ProtectedRoute.tsx`
-   - Click **CALCULATE TRACE FLOW** to see the 5-step dependency path illuminated across the canvas.
+3. Select `src/features/auth/Login.tsx` in the file tree or canvas to inspect its incoming and outgoing imports.
+4. Click **TRACE** on the Atlas Canvas bottom toolbar or in the File Inspector:
+   - Preset: `Login.tsx` → `ProtectedRoute.tsx`
+   - Click **TRACE FLOW** to see the 4-hop dependency path with exact line numbers (`Line 71`), imported symbols (`authenticateUser`), and syntax code statements.
+   - Click **APPLY PATH TO ATLAS CANVAS** to illuminate the path with directional step tags.
 5. Click **ASK** and prompt:  
    *"What happens when a user logs in?"*
 6. Review the streamed answer, accompanied by verified citations.
