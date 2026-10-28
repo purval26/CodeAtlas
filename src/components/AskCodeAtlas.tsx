@@ -274,6 +274,15 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
             apiKey: settings.customApiKey || undefined,
             provider: settings.customApiProvider,
           });
+        } else if (accumulated.trim().length > 20) {
+          // If connection dropped after receiving answer tokens, salvage the streamed response
+          res = {
+            answer: accumulated,
+            verifiedCitations: [],
+            insufficientEvidence: false,
+            modelUsed: selectedModel,
+            mode: aiMode,
+          };
         } else {
           throw streamErr;
         }

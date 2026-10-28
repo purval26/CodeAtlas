@@ -171,22 +171,72 @@ export async function askCodeAtlasStream(
 
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let accumulatedTokens = "";
   let finalResponse: AskResponse | null = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() || "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
 
-    for (const evt of events) {
-      const trimmed = evt.trim();
-      if (!trimmed) continue;
+      for (const evt of events) {
+        const trimmed = evt.trim();
+        // Skip empty lines and keep-alive ping comments (: ping)
+        if (!trimmed || trimmed.startsWith(":")) continue;
 
+        let eventType = "message";
+        let dataStr = "";
+
+        for (const line of trimmed.split("\n")) {
+          if (line.startsWith("event: ")) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            dataStr = line.slice(6).trim();
+          }
+        }
+
+        if (dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (eventType === "token" || (parsed && parsed.token !== undefined)) {
+              const tok = parsed.token || "";
+              accumulatedTokens += tok;
+              options.onToken(tok);
+            } else if (eventType === "done" || (parsed && parsed.answer !== undefined)) {
+              finalResponse = parsed;
+            } else if (eventType === "error") {
+              throw new Error(parsed.error || "Streaming error occurred");
+            }
+          } catch (e: any) {
+            if (eventType === "error") throw e;
+          }
+        }
+      }
+    }
+  } catch (readErr: any) {
+    // If the network connection drops or times out after tokens were already received,
+    // gracefully salvage the streamed text rather than failing with a network error.
+    if (accumulatedTokens.trim().length > 30) {
+      finalResponse = {
+        answer: accumulatedTokens,
+        verifiedCitations: [],
+        insufficientEvidence: false,
+        modelUsed: options.model || "streamed-response",
+        mode: options.mode || "free",
+      };
+    } else {
+      throw readErr;
+    }
+  }
+
+  if (buffer.trim()) {
+    const trimmed = buffer.trim();
+    if (!trimmed.startsWith(":")) {
       let eventType = "message";
       let dataStr = "";
-
       for (const line of trimmed.split("\n")) {
         if (line.startsWith("event: ")) {
           eventType = line.slice(7).trim();
@@ -194,47 +244,29 @@ export async function askCodeAtlasStream(
           dataStr = line.slice(6).trim();
         }
       }
-
       if (dataStr) {
         try {
           const parsed = JSON.parse(dataStr);
-          if (eventType === "token" || (parsed && parsed.token !== undefined)) {
-            options.onToken(parsed.token);
-          } else if (eventType === "done" || (parsed && parsed.answer !== undefined)) {
+          if (eventType === "done" || (parsed && parsed.answer !== undefined)) {
             finalResponse = parsed;
-          } else if (eventType === "error") {
-            throw new Error(parsed.error || "Streaming error occurred");
           }
-        } catch (e: any) {
-          if (eventType === "error") throw e;
-        }
+        } catch {}
       }
-    }
-  }
-
-  if (buffer.trim()) {
-    const trimmed = buffer.trim();
-    let eventType = "message";
-    let dataStr = "";
-    for (const line of trimmed.split("\n")) {
-      if (line.startsWith("event: ")) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith("data: ")) {
-        dataStr = line.slice(6).trim();
-      }
-    }
-    if (dataStr) {
-      try {
-        const parsed = JSON.parse(dataStr);
-        if (eventType === "done" || (parsed && parsed.answer !== undefined)) {
-          finalResponse = parsed;
-        }
-      } catch {}
     }
   }
 
   if (!finalResponse) {
-    throw new Error("Streaming ended unexpectedly before completion.");
+    if (accumulatedTokens.trim().length > 30) {
+      finalResponse = {
+        answer: accumulatedTokens,
+        verifiedCitations: [],
+        insufficientEvidence: false,
+        modelUsed: options.model || "streamed-response",
+        mode: options.mode || "free",
+      };
+    } else {
+      throw new Error("Streaming ended unexpectedly before completion.");
+    }
   }
 
   return finalResponse;

@@ -387,7 +387,7 @@ export class LlmAdapter {
         "X-Title": "CodeAtlas",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(120_000),
     });
 
     let activeModel = targetModel;
@@ -415,7 +415,7 @@ export class LlmAdapter {
             "X-Title": "CodeAtlas",
           },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(30_000),
+          signal: AbortSignal.timeout(120_000),
         });
         if (fallbackRes.ok) {
           res = fallbackRes;
@@ -498,7 +498,7 @@ export class LlmAdapter {
         "X-Title": "CodeAtlas",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(120_000),
     });
 
     let activeModel = targetModel;
@@ -526,7 +526,7 @@ export class LlmAdapter {
             "X-Title": "CodeAtlas",
           },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(30_000),
+          signal: AbortSignal.timeout(120_000),
         });
         if (fallbackRes.ok) {
           res = fallbackRes;
@@ -621,6 +621,7 @@ export class LlmAdapter {
         "x-goog-api-key": this.primaryApiKey || "",
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!res.ok) {
@@ -655,6 +656,7 @@ export class LlmAdapter {
         Authorization: `Bearer ${this.primaryApiKey}`,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!res.ok) {

@@ -7,6 +7,9 @@ import { AVAILABLE_MODELS } from "@/types";
 import { askRateLimiter, getClientIp } from "@/server/middleware/rateLimiter";
 import { hasAcceptableJsonBody, hasTrustedOrigin, isSafeIdentifier, isSafeQuestion } from "@/server/security/request";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
+
 export async function POST(request: Request) {
   try {
     if (!hasTrustedOrigin(request)) {
@@ -122,6 +125,18 @@ export async function POST(request: Request) {
       const encoder = new TextEncoder();
       const customStream = new ReadableStream({
         async start(controller) {
+          // Immediately flush initial SSE comment so browser and proxies receive HTTP 200 headers
+          controller.enqueue(encoder.encode(": connected\n\n"));
+
+          // Send periodic keep-alive heartbeat comments to prevent Cloudflare, Render, and browser idle timeouts
+          const heartbeat = setInterval(() => {
+            try {
+              controller.enqueue(encoder.encode(": ping\n\n"));
+            } catch {
+              clearInterval(heartbeat);
+            }
+          }, 3000);
+
           try {
             const response = await llmAdapter.askQuestionStream(
               question,
@@ -135,26 +150,36 @@ export async function POST(request: Request) {
                 baseUrl: effectiveBaseUrl,
               },
               (token: string) => {
-                controller.enqueue(
-                  encoder.encode(`event: token\ndata: ${JSON.stringify({ token })}\n\n`)
-                );
+                try {
+                  controller.enqueue(
+                    encoder.encode(`event: token\ndata: ${JSON.stringify({ token })}\n\n`)
+                  );
+                } catch {
+                  // Controller may be closed by client disconnect
+                }
               }
             );
 
-            controller.enqueue(
-              encoder.encode(`event: done\ndata: ${JSON.stringify(response)}\n\n`)
-            );
-            controller.close();
+            clearInterval(heartbeat);
+            try {
+              controller.enqueue(
+                encoder.encode(`event: done\ndata: ${JSON.stringify(response)}\n\n`)
+              );
+              controller.close();
+            } catch {}
           } catch (err: any) {
+            clearInterval(heartbeat);
             console.error("Ask stream error:", err);
-            controller.enqueue(
-              encoder.encode(
-                `event: error\ndata: ${JSON.stringify({
-                  error: err.message || "Internal error processing question stream.",
-                })}\n\n`
-              )
-            );
-            controller.close();
+            try {
+              controller.enqueue(
+                encoder.encode(
+                  `event: error\ndata: ${JSON.stringify({
+                    error: err.message || "Internal error processing question stream.",
+                  })}\n\n`
+                )
+              );
+              controller.close();
+            } catch {}
           }
         },
       });
@@ -162,7 +187,7 @@ export async function POST(request: Request) {
       return new Response(customStream, {
         headers: {
           "Content-Type": "text/event-stream; charset=utf-8",
-          "Cache-Control": "no-cache, no-transform",
+          "Cache-Control": "no-cache, no-transform, no-store, must-revalidate",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
         },
