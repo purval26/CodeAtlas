@@ -5,6 +5,7 @@ import {
   isConfigFile,
   MAX_FILES_LIMIT,
   MAX_FILE_SIZE_BYTES,
+  MAX_TOTAL_SOURCE_BYTES,
 } from "./filter";
 import { GOLDEN_DEMO_FILES, GOLDEN_DEMO_REPO_URL, InMemoryFile } from "./demoRepo";
 import { Repository } from "@/types";
@@ -174,7 +175,7 @@ export async function fetchRepositoryFiles(
   // Fetch repo metadata
   const metaRes = await fetch(
     `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
-    { headers }
+    { headers, signal: AbortSignal.timeout(15_000) }
   );
 
   if (metaRes.status === 404) {
@@ -200,7 +201,7 @@ export async function fetchRepositoryFiles(
   let commitSha: string | undefined = undefined;
   try {
     const commitUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/commits?sha=${encodeURIComponent(defaultBranch)}&per_page=1`;
-    const commitRes = await fetch(commitUrl, { headers });
+    const commitRes = await fetch(commitUrl, { headers, signal: AbortSignal.timeout(15_000) });
     if (commitRes.ok) {
       const commitList = (await commitRes.json()) as any;
       if (Array.isArray(commitList) && commitList.length > 0 && typeof commitList[0]?.sha === "string") {
@@ -221,7 +222,7 @@ export async function fetchRepositoryFiles(
   onProgress?.(18, `01 FETCH REPOSITORY: Reading file tree (${defaultBranch})...`);
 
   const treeUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/trees/${defaultBranch}?recursive=1`;
-  const treeRes = await fetch(treeUrl, { headers });
+  const treeRes = await fetch(treeUrl, { headers, signal: AbortSignal.timeout(20_000) });
 
   if (!treeRes.ok) {
     throw new Error(
@@ -232,6 +233,11 @@ export async function fetchRepositoryFiles(
   const treeData = (await treeRes.json()) as any;
   if (!treeData.tree || !Array.isArray(treeData.tree)) {
     throw new Error("Repository tree is empty or invalid format.");
+  }
+  if (treeData.truncated === true) {
+    throw new Error(
+      "Repository tree is too large for a complete analysis. CodeAtlas refuses to produce answers from a truncated source tree."
+    );
   }
 
   const relevantEntries = treeData.tree.filter((item: any) => {
@@ -250,6 +256,25 @@ export async function fetchRepositoryFiles(
   if (relevantEntries.length === 0) {
     throw new Error(
       `No supported JavaScript/TypeScript files found in ${parsed.owner}/${parsed.repo}.`
+    );
+  }
+
+  const oversizedEntry = relevantEntries.find(
+    (entry: { size?: unknown }) => typeof entry.size === "number" && entry.size > MAX_FILE_SIZE_BYTES
+  );
+  if (oversizedEntry) {
+    throw new Error(
+      `REPOSITORY TOO LARGE: ${oversizedEntry.path} exceeds the ${Math.floor(MAX_FILE_SIZE_BYTES / 1024)}KB per-file analysis limit. CodeAtlas refuses incomplete source maps.`
+    );
+  }
+
+  const knownSourceBytes = relevantEntries.reduce(
+    (total: number, entry: { size?: unknown }) => total + (typeof entry.size === "number" ? entry.size : 0),
+    0
+  );
+  if (knownSourceBytes > MAX_TOTAL_SOURCE_BYTES) {
+    throw new Error(
+      `REPOSITORY TOO LARGE: Supported source exceeds the ${Math.floor(MAX_TOTAL_SOURCE_BYTES / (1024 * 1024))}MB analysis limit.`
     );
   }
 
@@ -278,6 +303,7 @@ export async function fetchRepositoryFiles(
                 Accept: "application/vnd.github.raw",
                 "User-Agent": "CodeAtlas-Analyzer/1.0",
               },
+              signal: AbortSignal.timeout(15_000),
             });
             if (res.ok) {
               const text = await res.text();
@@ -297,7 +323,7 @@ export async function fetchRepositoryFiles(
           }
 
           const rawFileUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${defaultBranch}/${entry.path}`;
-          const res = await fetch(rawFileUrl, { headers: rawHeaders });
+          const res = await fetch(rawFileUrl, { headers: rawHeaders, signal: AbortSignal.timeout(15_000) });
           if (res.ok) {
             const text = await res.text();
             if (text.length <= MAX_FILE_SIZE_BYTES) {
@@ -314,6 +340,7 @@ export async function fetchRepositoryFiles(
                 Accept: "application/vnd.github.raw",
                 "User-Agent": "CodeAtlas-Analyzer/1.0",
               },
+              signal: AbortSignal.timeout(15_000),
             });
             if (res.ok) {
               const text = await res.text();
@@ -330,8 +357,14 @@ export async function fetchRepositoryFiles(
       })
     );
 
-    for (const r of results) {
-      if (r) files.push(r);
+    for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
+      const result = results[resultIndex];
+      if (!result) {
+        throw new Error(
+          `Unable to retrieve ${batch[resultIndex].path}; refusing to produce an incomplete repository map.`
+        );
+      }
+      files.push(result);
     }
   }
 

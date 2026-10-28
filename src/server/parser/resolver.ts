@@ -1,4 +1,5 @@
 import path from "node:path";
+import ts from "typescript";
 
 export interface PathAliasConfig {
   baseUrl: string;
@@ -11,12 +12,24 @@ export function parseTsConfigAliases(tsconfigContent?: string): PathAliasConfig 
   }
 
   try {
-    // Strip comments from json (json with comments)
-    const stripped = tsconfigContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1");
-    const parsed = JSON.parse(stripped);
+    // TypeScript's parser safely handles comments and trailing commas without
+    // corrupting URL-like strings inside a valid tsconfig.
+    const parsedResult = ts.parseConfigFileTextToJson("tsconfig.json", tsconfigContent);
+    if (parsedResult.error || !parsedResult.config || typeof parsedResult.config !== "object") {
+      return { baseUrl: ".", paths: {} };
+    }
+    const parsed = parsedResult.config;
     const compilerOptions = parsed.compilerOptions || {};
-    const baseUrl = (compilerOptions.baseUrl || ".").replace(/^\.\//, "");
-    const paths = compilerOptions.paths || {};
+    const rawBaseUrl = typeof compilerOptions.baseUrl === "string" ? compilerOptions.baseUrl : ".";
+    const baseUrl = rawBaseUrl.replace(/^\.\//, "");
+    const paths = Object.fromEntries(
+      Object.entries(compilerOptions.paths || {}).filter(
+        ([pattern, targets]) =>
+          typeof pattern === "string" &&
+          Array.isArray(targets) &&
+          targets.every((target) => typeof target === "string")
+      )
+    ) as Record<string, string[]>;
     return { baseUrl, paths };
   } catch {
     return { baseUrl: ".", paths: {} };
@@ -36,11 +49,15 @@ const EXTENSIONS_TO_PROBE = [
   ".tsx",
   ".js",
   ".jsx",
+  ".mjs",
+  ".cjs",
   ".json",
   "/index.ts",
   "/index.tsx",
   "/index.js",
   "/index.jsx",
+  "/index.mjs",
+  "/index.cjs",
   "/index.json",
 ];
 
@@ -56,6 +73,7 @@ function normalizePosix(p: string): string {
 export class DependencyResolver {
   private fileSet: Set<string>;
   private aliasConfig: PathAliasConfig;
+  private resolveCache = new Map<string, ResolveResult>();
 
   constructor(filePaths: string[], tsconfigContent?: string) {
     this.fileSet = new Set(filePaths.map(normalizePosix));
@@ -101,14 +119,27 @@ export class DependencyResolver {
         return candidate;
       }
     }
+
+    // ESM projects often write `import "./module.js"` while authoring the
+    // source as TypeScript. Try the emitted extension's source equivalents
+    // only after the literal file path above has failed.
+    const sourceExtension = path.posix.extname(baseCandidate).toLowerCase();
+    if ([".js", ".jsx", ".mjs", ".cjs"].includes(sourceExtension)) {
+      const stem = baseCandidate.slice(0, -sourceExtension.length);
+      for (const ext of [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]) {
+        const candidate = normalizePosix(`${stem}${ext}`);
+        if (this.fileSet.has(candidate)) return candidate;
+      }
+    }
     return null;
   }
 
-  public resolveImport(
+  private resolveImportUncached(
     sourceFilePath: string,
     specifier: string
   ): ResolveResult {
     const cleanSpecifier = specifier.trim();
+    if (!cleanSpecifier) return { resolved: false, isExternal: false };
 
     // 1. Check relative imports (starts with ./ or ../)
     if (cleanSpecifier.startsWith("./") || cleanSpecifier.startsWith("../")) {
@@ -158,5 +189,15 @@ export class DependencyResolver {
       isExternal: true,
       packageName: pkgName,
     };
+  }
+
+  public resolveImport(sourceFilePath: string, specifier: string): ResolveResult {
+    const cacheKey = `${normalizePosix(sourceFilePath)}\u0000${specifier.trim()}`;
+    const cached = this.resolveCache.get(cacheKey);
+    if (cached) return cached;
+
+    const result = this.resolveImportUncached(sourceFilePath, specifier);
+    this.resolveCache.set(cacheKey, result);
+    return result;
   }
 }

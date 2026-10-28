@@ -13,13 +13,22 @@ export function traceDependencyFlow(
   nodes: GraphNode[],
   edges: GraphEdge[]
 ): TraceFlowResult {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node.label]));
+  if (!nodeMap.has(startNodeId) || !nodeMap.has(endNodeId)) {
+    return {
+      found: false,
+      nodePath: [],
+      edgePath: [],
+      readableSteps: [],
+    };
+  }
+
   if (startNodeId === endNodeId) {
-    const node = nodes.find((n) => n.id === startNodeId);
     return {
       found: true,
       nodePath: [startNodeId],
       edgePath: [],
-      readableSteps: [node?.label || startNodeId],
+      readableSteps: [nodeMap.get(startNodeId) || startNodeId],
     };
   }
 
@@ -34,13 +43,14 @@ export function traceDependencyFlow(
 
   // BFS Queue: [currentNodeId]
   const queue: string[] = [startNodeId];
+  let queueIndex = 0;
   const visited = new Set<string>([startNodeId]);
   const parent = new Map<string, { prevNode: string; edgeId: string }>();
 
   let found = false;
 
-  while (queue.length > 0) {
-    const curr = queue.shift()!;
+  while (queueIndex < queue.length) {
+    const curr = queue[queueIndex++];
     if (curr === endNodeId) {
       found = true;
       break;
@@ -79,7 +89,6 @@ export function traceDependencyFlow(
     nodePath.unshift(curr);
   }
 
-  const nodeMap = new Map(nodes.map((n) => [n.id, n.label]));
   const readableSteps = nodePath.map((id) => nodeMap.get(id) || id);
 
   return {

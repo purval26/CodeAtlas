@@ -213,6 +213,7 @@ export class JobManager {
 
       const parsedFiles = new Map<string, ParsedFileResult>();
       const codePaths: string[] = [];
+      const parseFailures: string[] = [];
       let parsedCount = 0;
 
       for (const file of files) {
@@ -227,7 +228,15 @@ export class JobManager {
           parsedCount++;
         } catch (err: any) {
           console.error(`AST Parse error for ${file.path}:`, err?.message || err);
+          parseFailures.push(file.path);
         }
+      }
+
+      if (parseFailures.length > 0) {
+        const sample = parseFailures.slice(0, 3).join(", ");
+        throw new Error(
+          `Unable to parse ${parseFailures.length} supported source file(s) (${sample}). CodeAtlas will not generate a partial architecture map.`
+        );
       }
 
       if (parsedCount === 0 && files.length > 0) {

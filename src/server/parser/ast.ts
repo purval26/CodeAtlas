@@ -62,6 +62,18 @@ export function parseSourceFile(
     scriptKind
   );
 
+  const sourceDiagnostics = (sourceFile as ts.SourceFile & {
+    parseDiagnostics?: readonly ts.DiagnosticWithLocation[];
+  }).parseDiagnostics || [];
+  const syntaxErrors = sourceDiagnostics.filter(
+    (diagnostic: ts.DiagnosticWithLocation) => diagnostic.category === ts.DiagnosticCategory.Error
+  );
+  if (syntaxErrors.length > 0) {
+    const first = syntaxErrors[0];
+    const position = first.start === undefined ? "" : ` at line ${sourceFile.getLineAndCharacterOfPosition(first.start).line + 1}`;
+    throw new Error(`TypeScript parser rejected source${position}: ${ts.flattenDiagnosticMessageText(first.messageText, " ")}`);
+  }
+
   const imports: ExtractedImport[] = [];
   const exports: string[] = [];
   const symbols: CodeSymbol[] = [];
@@ -84,17 +96,20 @@ export function parseSourceFile(
       if (ts.isStringLiteral(specifier)) {
         const line = getLine(node.getStart());
         const names: string[] = [];
-        const isTypeOnly = node.importClause?.isTypeOnly ?? false;
+        const namedBindings = node.importClause?.namedBindings;
+        const namedImports = namedBindings && ts.isNamedImports(namedBindings) ? namedBindings : undefined;
+        const isTypeOnly =
+          node.importClause?.isTypeOnly ??
+          (Boolean(namedImports?.elements.length) && namedImports!.elements.every((element) => element.isTypeOnly));
 
         if (node.importClause) {
           if (node.importClause.name) {
             names.push(node.importClause.name.text);
           }
           if (
-            node.importClause.namedBindings &&
-            ts.isNamedImports(node.importClause.namedBindings)
+            namedImports
           ) {
-            for (const elem of node.importClause.namedBindings.elements) {
+            for (const elem of namedImports.elements) {
               names.push(elem.name.text);
             }
           } else if (
@@ -113,6 +128,22 @@ export function parseSourceFile(
           isTypeOnly,
         });
       }
+    }
+
+    // 1b. TypeScript import assignment: import fs = require("fs")
+    if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression &&
+      ts.isStringLiteral(node.moduleReference.expression)
+    ) {
+      imports.push({
+        specifier: node.moduleReference.expression.text,
+        names: [node.name.text],
+        line: getLine(node.getStart()),
+        type: "require",
+        isTypeOnly: node.isTypeOnly,
+      });
     }
 
     // 2. Export Declarations with module specifier: export { x } from 'y'
@@ -146,8 +177,8 @@ export function parseSourceFile(
     }
 
     // 4. Function Declarations
-    if (ts.isFunctionDeclaration(node) && node.name) {
-      const name = node.name.text;
+    if (ts.isFunctionDeclaration(node) && (node.name || hasModifier(node, ts.SyntaxKind.DefaultKeyword))) {
+      const name = node.name?.text || "default";
       const startLine = getLine(node.getStart());
       const endLine = getLine(node.getEnd());
       symbols.push({
@@ -167,8 +198,8 @@ export function parseSourceFile(
     }
 
     // 5. Class Declarations
-    if (ts.isClassDeclaration(node) && node.name) {
-      const name = node.name.text;
+    if (ts.isClassDeclaration(node) && (node.name || hasModifier(node, ts.SyntaxKind.DefaultKeyword))) {
+      const name = node.name?.text || "default";
       const startLine = getLine(node.getStart());
       const endLine = getLine(node.getEnd());
       symbols.push({

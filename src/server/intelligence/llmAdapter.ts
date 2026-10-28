@@ -255,6 +255,54 @@ export class LlmAdapter {
     return { answer, rawCitations };
   }
 
+  /**
+   * An answer is only publishable when every returned citation resolves to a
+   * line range that was actually supplied to the model. This prevents a model
+   * from laundering a real-but-unseen file path into an otherwise unsupported
+   * answer.
+   */
+  private finalizeGroundedAnswer(
+    rawOutput: string,
+    retrieval: RetrievalResult,
+    parsedFiles: Map<string, ParsedFileResult>,
+    modelUsed: string,
+    mode: "free" | "paid" | "custom"
+  ): AskResponse {
+    const { answer, rawCitations } = this.parseRawResponse(rawOutput, retrieval);
+    const verifiedCitations = validateCitations(rawCitations, parsedFiles).filter((citation) =>
+      retrieval.snippets.some(
+        (snippet) =>
+          snippet.filePath === citation.filePath &&
+          citation.startLine >= snippet.startLine &&
+          citation.endLine <= snippet.endLine
+      )
+    );
+
+    const hasExplicitInsufficient =
+      answer.trim().startsWith("INSUFFICIENT EVIDENCE") ||
+      answer.includes("INSUFFICIENT EVIDENCE:") ||
+      answer.toLowerCase().includes("could not find enough repository evidence");
+
+    if (hasExplicitInsufficient || verifiedCitations.length === 0) {
+      return {
+        answer:
+          "INSUFFICIENT EVIDENCE: CodeAtlas could not verify this answer against the retrieved repository source.",
+        verifiedCitations: [],
+        insufficientEvidence: true,
+        modelUsed,
+        mode,
+      };
+    }
+
+    return {
+      answer,
+      verifiedCitations,
+      insufficientEvidence: false,
+      modelUsed,
+      mode,
+    };
+  }
+
   public async callOpenRouter(
     prompt: string,
     context: string,
@@ -624,18 +672,18 @@ export class LlmAdapter {
       const fileRes = parsedFiles.get(snip.filePath);
       if (!fileRes) continue;
 
-      const symNames = fileRes.symbols.map((s) => `\`${s.name}\` (${s.kind})`).join(", ");
-      const expNames = fileRes.exports.map((e) => `\`${e}\``).join(", ");
-
-      const start = fileRes.symbols[0]?.startLine || snip.startLine;
-      const end = fileRes.symbols[0]?.endLine || Math.min(snip.startLine + 20, snip.endLine);
+      const visibleSymbols = fileRes.symbols.filter(
+        (symbol) => symbol.startLine >= snip.startLine && symbol.startLine <= snip.endLine
+      );
+      const symNames = visibleSymbols.map((symbol) => `\`${symbol.name}\` (${symbol.kind})`).join(", ");
+      // The source excerpt is the only evidence the deterministic response may
+      // cite; do not summarize symbols or exports outside this window.
+      const start = snip.startLine;
+      const end = snip.endLine;
 
       lines.push(`${idx + 1}. **${snip.filePath}** [${snip.filePath}:${start}–${end}]:`);
       if (symNames) {
         lines.push(`   - Symbols: ${symNames}`);
-      }
-      if (expNames) {
-        lines.push(`   - Exports: ${expNames}`);
       }
 
       rawCitations.push({
@@ -745,31 +793,7 @@ export class LlmAdapter {
       modelUsed = "codeatlas/deterministic-synthesizer";
     }
 
-    const { answer, rawCitations } = this.parseRawResponse(rawOutput, retrieval);
-
-    // Validate citations server-side
-    const verifiedCitations = validateCitations(rawCitations, parsedFiles);
-
-    // Evidence sufficiency determination (Priority 1):
-    // "Insufficient evidence" should ONLY appear when the retrieval/grounding system
-    // genuinely determines that there is not enough relevant repository evidence.
-    const hasExplicitInsufficient =
-      answer.trim().startsWith("INSUFFICIENT EVIDENCE") ||
-      answer.includes("INSUFFICIENT EVIDENCE:") ||
-      answer.toLowerCase().includes("could not find enough repository evidence");
-
-    const isInsufficient =
-      retrieval.insufficientEvidence ||
-      retrieval.snippets.length === 0 ||
-      hasExplicitInsufficient;
-
-    return {
-      answer,
-      verifiedCitations,
-      insufficientEvidence: isInsufficient,
-      modelUsed,
-      mode,
-    };
+    return this.finalizeGroundedAnswer(rawOutput, retrieval, parsedFiles, modelUsed, mode);
   }
 
   public async askQuestionStream(
@@ -838,11 +862,6 @@ export class LlmAdapter {
     if (goldenDemoAnswer) {
       rawOutput = goldenDemoAnswer;
       modelUsed = "codeatlas/deterministic-synthesizer";
-      const chunkSize = 20;
-      for (let i = 0; i < rawOutput.length; i += chunkSize) {
-        onToken?.(rawOutput.slice(i, i + chunkSize));
-        await new Promise((r) => setTimeout(r, 6));
-      }
     } else if (hasEffectiveKey) {
       if (effectiveProvider === "openrouter" || effectiveProvider === "custom") {
         const effort = this.determineEffort(question);
@@ -852,7 +871,7 @@ export class LlmAdapter {
           effort,
           targetModel,
           mode,
-          onToken,
+          undefined,
           customApiKey,
           customBaseUrl
         );
@@ -861,45 +880,26 @@ export class LlmAdapter {
       } else if (effectiveProvider === "gemini") {
         rawOutput = await this.callGemini(question, retrieval.contextText);
         modelUsed = `google/${process.env.GEMINI_MODEL || "gemini-2.0-flash"}`;
-        onToken?.(rawOutput);
       } else if (effectiveProvider === "openai") {
         rawOutput = await this.callOpenAI(question, retrieval.contextText);
         modelUsed = "openai/gpt-4o-mini";
-        onToken?.(rawOutput);
       } else {
         rawOutput = this.deterministicSynthesizer(question, retrieval, parsedFiles);
         modelUsed = "codeatlas/deterministic-synthesizer";
-        onToken?.(rawOutput);
       }
     } else {
       rawOutput = this.deterministicSynthesizer(question, retrieval, parsedFiles);
       modelUsed = "codeatlas/deterministic-synthesizer";
       const chunkSize = 20;
       for (let i = 0; i < rawOutput.length; i += chunkSize) {
-        onToken?.(rawOutput.slice(i, i + chunkSize));
         await new Promise((r) => setTimeout(r, 6));
       }
     }
 
-    const { answer, rawCitations } = this.parseRawResponse(rawOutput, retrieval);
-    const verifiedCitations = validateCitations(rawCitations, parsedFiles);
-
-    const hasExplicitInsufficient =
-      answer.trim().startsWith("INSUFFICIENT EVIDENCE") ||
-      answer.includes("INSUFFICIENT EVIDENCE:") ||
-      answer.toLowerCase().includes("could not find enough repository evidence");
-
-    const isInsufficient =
-      retrieval.insufficientEvidence ||
-      retrieval.snippets.length === 0 ||
-      hasExplicitInsufficient;
-
-    return {
-      answer,
-      verifiedCitations,
-      insufficientEvidence: isInsufficient,
-      modelUsed,
-      mode,
-    };
+    const response = this.finalizeGroundedAnswer(rawOutput, retrieval, parsedFiles, modelUsed, mode);
+    // Do not stream unvalidated model text. A single verified payload still
+    // uses the SSE API while ensuring temporary UI state is never ungrounded.
+    onToken?.(response.answer);
+    return response;
   }
 }

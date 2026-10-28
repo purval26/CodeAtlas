@@ -31,6 +31,8 @@ export const CONFIG_FILES = new Set([
 
 export const MAX_FILES_LIMIT = 500;
 export const MAX_FILE_SIZE_BYTES = 500 * 1024; // 500KB per code file
+// Bound the in-memory AST and retrieval workload for a single analysis.
+export const MAX_TOTAL_SOURCE_BYTES = 20 * 1024 * 1024; // 20MB
 
 export function shouldIgnorePath(path: string): boolean {
   const parts = path.split("/");

@@ -1,6 +1,6 @@
 import { GraphData } from "@/types";
 import { ParsedFileResult } from "../parser/ast";
-import { searchRepository } from "./search";
+import { collectRepositoryEvidence } from "./search";
 
 export const MAX_FILES = 8;
 export const MAX_LINES_PER_FILE = 120;
@@ -55,51 +55,48 @@ export function buildBoundedContext(
     };
   }
 
-  // 1. Score all files based on keyword search and track match locations
+  // 1. Score all files in one source-backed pass. The old implementation ran a
+  // full repository search for every term; this keeps the same lexical
+  // grounding while avoiding repeated scans of large repositories.
   const fileScores = new Map<string, number>();
   const fileMatches = new Map<string, { line: number; weight: number }[]>();
 
-  for (const kw of keywords) {
-    const searchResults = searchRepository(kw, parsedFiles, 20);
-    for (const res of searchResults) {
-      const weight = res.matchType === "symbol" ? 10 : res.matchType === "file" ? 5 : 2;
-      const current = fileScores.get(res.filePath) || 0;
-      fileScores.set(res.filePath, current + weight);
-
-      if (res.line && res.line > 0) {
-        const matches = fileMatches.get(res.filePath) || [];
-        matches.push({ line: res.line, weight });
-        fileMatches.set(res.filePath, matches);
-      }
-    }
+  for (const evidence of collectRepositoryEvidence(keywords.join(" "), parsedFiles)) {
+    fileScores.set(evidence.filePath, evidence.score);
+    fileMatches.set(
+      evidence.filePath,
+      evidence.lineMatches.map((match) => ({ line: match.line, weight: match.score }))
+    );
   }
 
-  // Graph expansion: If top file connects to another file, boost connected file
+  // 2. Build a file-only adjacency index once, then expand the top evidence
+  // files. This keeps architecture questions useful without allowing graph
+  // proximity to outweigh direct source evidence.
   if (graphData) {
+    const adjacentFiles = new Map<string, Set<string>>();
+    const addNeighbor = (from: string, to: string) => {
+      if (!parsedFiles.has(from) || !parsedFiles.has(to)) return;
+      const neighbors = adjacentFiles.get(from) || new Set<string>();
+      neighbors.add(to);
+      adjacentFiles.set(from, neighbors);
+    };
+
+    for (const edge of graphData.edges) {
+      const prefix = `${graphData.repository.id}:`;
+      if (!edge.source.startsWith(prefix) || !edge.target.startsWith(prefix)) continue;
+      addNeighbor(edge.source.slice(prefix.length), edge.target.slice(prefix.length));
+      addNeighbor(edge.target.slice(prefix.length), edge.source.slice(prefix.length));
+    }
+
     const topFiles = Array.from(fileScores.entries())
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .slice(0, 3)
       .map(([fp]) => fp);
 
     for (const topFile of topFiles) {
-      const topNodeId = `${graphData.repository.id}:${topFile}`;
-      for (const edge of graphData.edges) {
-        // Outgoing dependency: topFile -> targetPath (dependencies)
-        if (edge.source === topNodeId && edge.target.startsWith(graphData.repository.id)) {
-          const targetPath = edge.target.slice(graphData.repository.id.length + 1);
-          if (parsedFiles.has(targetPath)) {
-            const current = fileScores.get(targetPath) || 0;
-            fileScores.set(targetPath, current + 3);
-          }
-        }
-        // Incoming dependency: sourcePath -> topFile (dependents / "what depends on topFile")
-        if (edge.target === topNodeId && edge.source.startsWith(graphData.repository.id)) {
-          const sourcePath = edge.source.slice(graphData.repository.id.length + 1);
-          if (parsedFiles.has(sourcePath)) {
-            const current = fileScores.get(sourcePath) || 0;
-            fileScores.set(sourcePath, current + 3);
-          }
-        }
+      for (const neighbor of adjacentFiles.get(topFile) || []) {
+        const current = fileScores.get(neighbor) || 0;
+        fileScores.set(neighbor, current + 3);
       }
     }
   }
@@ -107,10 +104,11 @@ export function buildBoundedContext(
   // Sort files by relevance score descending
   const rankedFilePaths = Array.from(fileScores.entries())
     .filter(([, score]) => score > 0)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([fp]) => fp);
 
-  // If no files matched keywords, but repo has files, take first few files if query is generic
+  // No direct source evidence means no answer. Never seed context with arbitrary
+  // files simply to make a model produce a plausible-looking response.
   if (rankedFilePaths.length === 0) {
     return {
       contextText: "",
@@ -179,7 +177,11 @@ export function buildBoundedContext(
   const contextParts: string[] = [];
   for (const snip of snippets) {
     const fileRes = parsedFiles.get(snip.filePath);
-    const syms = fileRes?.symbols.slice(0, 5).map((s) => `${s.name} (${s.kind})`).join(", ");
+    const syms = fileRes?.symbols
+      .filter((symbol) => symbol.startLine >= snip.startLine && symbol.startLine <= snip.endLine)
+      .slice(0, 5)
+      .map((symbol) => `${symbol.name} (${symbol.kind})`)
+      .join(", ");
     const imps = fileRes?.imports.map((i) => i.specifier).filter(Boolean).slice(0, 3).join(", ");
     contextParts.push(
       `--- FILE: ${snip.filePath} [${fileRes?.file.language || "typescript"}] (Lines ${snip.startLine} to ${snip.endLine})${syms ? ` | Symbols: ${syms}` : ""}${imps ? ` | Imports: ${imps}` : ""} ---`
