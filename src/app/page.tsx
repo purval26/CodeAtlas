@@ -65,9 +65,17 @@ export default function Home() {
   const [landingError, setLandingError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Authentication state
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [oauthConfigured, setOauthConfigured] = useState(false);
+  // Authentication state - initialize oauthConfigured to true so the login button renders immediately with 0s delay
+  const [oauthConfigured, setOauthConfigured] = useState(true);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("codeatlas_auth_user");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
 
   // Sync theme
   useEffect(() => {
@@ -106,14 +114,38 @@ export default function Home() {
     });
   };
 
-  // Load auth status
+  // Load auth status and handle OAuth redirect query params
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("auth")) {
+        // Clean URL query param without full page reload
+        window.history.replaceState({}, "", window.location.pathname);
+      } else if (params.has("auth_error")) {
+        const errCode = params.get("auth_error");
+        setLandingError(`GitHub authorization was interrupted (${errCode}). Please try again.`);
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+
     fetch("/api/auth/user")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
-          setAuthUser(data.user);
-          setOauthConfigured(data.oauthConfigured);
+          if (data.user) {
+            setAuthUser(data.user);
+            try {
+              localStorage.setItem("codeatlas_auth_user", JSON.stringify(data.user));
+            } catch {}
+          } else {
+            setAuthUser(null);
+            try {
+              localStorage.removeItem("codeatlas_auth_user");
+            } catch {}
+          }
+          if (data.oauthConfigured !== undefined) {
+            setOauthConfigured(Boolean(data.oauthConfigured));
+          }
         }
       })
       .catch((err) => {
@@ -125,6 +157,9 @@ export default function Home() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setAuthUser(null);
+      try {
+        localStorage.removeItem("codeatlas_auth_user");
+      } catch {}
     } catch (err) {
       console.error("Logout error:", err);
     }
