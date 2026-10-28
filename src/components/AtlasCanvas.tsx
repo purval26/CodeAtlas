@@ -58,7 +58,8 @@ const EDGE_STYLE_OPTIONS: CustomSelectOption<GraphEdgeStyle>[] = [
 interface AtlasCanvasProps {
   graphData: GraphData;
   selectedNodeId: string | null;
-  onSelectNode: (nodeId: string) => void;
+  onSelectNode: (nodeId: string | null) => void;
+  onClearTrace?: () => void;
   tracePathNodeIds?: string[];
   tracePathEdgeIds?: string[];
   isMobile?: boolean;
@@ -446,6 +447,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
   graphData,
   selectedNodeId,
   onSelectNode,
+  onClearTrace,
   tracePathNodeIds = [],
   tracePathEdgeIds = [],
   isMobile = false,
@@ -894,6 +896,10 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
     [onSelectNode, isMobile, isTablet, layoutResult.positions, graphData.nodes, setCenter]
   );
 
+  const onPaneClick = useCallback(() => {
+    onSelectNode(null);
+  }, [onSelectNode]);
+
   const handleFlowError = useCallback((id: string, message: string) => {
     // Suppress harmless edge fallback warning #011, HMR type-identity warning #002,
     // and initial mount container measurement warning #004 (handled automatically by ResizeObserver)
@@ -929,6 +935,7 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
         edgeTypes={memoizedEdgeTypes}
         onError={handleFlowError}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onInit={handleInit}
@@ -1099,9 +1106,31 @@ export const AtlasCanvasInner: React.FC<AtlasCanvasProps> = ({
             <strong>{graphData.stats.totalImports} EDGES</strong>
           </span>
           {tracePathNodeIds.length > 0 && (
-            <span style={{ color: "var(--ink)", background: "var(--accent)", padding: "0 4px" }}>
-              TRACE: {tracePathNodeIds.length} STEPS
-            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClearTrace?.();
+              }}
+              className="font-mono"
+              style={{
+                color: "var(--ink)",
+                background: "var(--accent)",
+                border: "1px solid var(--border)",
+                padding: "1px 6px",
+                fontSize: "10px",
+                fontWeight: 800,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                lineHeight: "1.2",
+              }}
+              title="Click to clear trace highlight"
+            >
+              <span>TRACE: {tracePathNodeIds.length} STEPS</span>
+              <span style={{ opacity: 0.7 }}>✕</span>
+            </button>
           )}
         </div>
       )}

@@ -62,6 +62,23 @@ export default function Home() {
   const [tracePathNodeIds, setTracePathNodeIds] = useState<string[]>([]);
   const [tracePathEdgeIds, setTracePathEdgeIds] = useState<string[]>([]);
 
+  const handleClearTrace = useCallback(() => {
+    setTracePathNodeIds([]);
+    setTracePathEdgeIds([]);
+  }, []);
+
+  const handleSelectNode = useCallback(
+    (id: string | null) => {
+      setSelectedNodeId(id);
+      // When changing selected file or deselecting, reset trace highlighting so files revert to original background color
+      if (tracePathNodeIds.length > 0) {
+        setTracePathNodeIds([]);
+        setTracePathEdgeIds([]);
+      }
+    },
+    [tracePathNodeIds.length]
+  );
+
   const [landingError, setLandingError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -373,14 +390,15 @@ export default function Home() {
                   <FileExplorer
                     nodes={graphData.nodes}
                     selectedNodeId={selectedNodeId}
-                    onSelectNode={(id) => setSelectedNodeId(id)}
+                    onSelectNode={handleSelectNode}
                   />
 
                   <div style={{ flex: 1, height: "100%", width: "100%", position: "relative", minHeight: 0, minWidth: 0, display: "flex" }}>
                     <AtlasCanvas
                       graphData={graphData}
                       selectedNodeId={selectedNodeId}
-                      onSelectNode={(id) => setSelectedNodeId(id)}
+                      onSelectNode={handleSelectNode}
+                      onClearTrace={handleClearTrace}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
                     />
@@ -389,7 +407,7 @@ export default function Home() {
                   <FileInspector
                     selectedNode={selectedNode}
                     graphData={graphData}
-                    onSelectNode={(id) => setSelectedNodeId(id)}
+                    onSelectNode={handleSelectNode}
                     onOpenSource={(path, lineRange) => handleOpenSource(path, lineRange)}
                     onStartTrace={(id) => {
                       setTraceStartId(id);
@@ -411,7 +429,7 @@ export default function Home() {
                       <FileExplorer
                         nodes={graphData.nodes}
                         selectedNodeId={selectedNodeId}
-                        onSelectNode={(id) => setSelectedNodeId(id)}
+                        onSelectNode={handleSelectNode}
                         onClose={() => setIsTabletExplorerOpen(false)}
                         isMobileDrawer={false}
                       />
@@ -422,7 +440,8 @@ export default function Home() {
                     <AtlasCanvas
                       graphData={graphData}
                       selectedNodeId={selectedNodeId}
-                      onSelectNode={(id) => setSelectedNodeId(id)}
+                      onSelectNode={handleSelectNode}
+                      onClearTrace={handleClearTrace}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
                       isTablet={true}
@@ -478,7 +497,7 @@ export default function Home() {
                       <FileInspector
                         selectedNode={selectedNode}
                         graphData={graphData}
-                        onSelectNode={(id) => setSelectedNodeId(id)}
+                        onSelectNode={handleSelectNode}
                         onOpenSource={(path, lineRange) => handleOpenSource(path, lineRange)}
                         onStartTrace={(id) => {
                           setTraceStartId(id);
@@ -512,7 +531,8 @@ export default function Home() {
                     <AtlasCanvas
                       graphData={graphData}
                       selectedNodeId={selectedNodeId}
-                      onSelectNode={(id) => setSelectedNodeId(id)}
+                      onSelectNode={handleSelectNode}
+                      onClearTrace={handleClearTrace}
                       tracePathNodeIds={tracePathNodeIds}
                       tracePathEdgeIds={tracePathEdgeIds}
                       isMobile={true}
@@ -699,7 +719,7 @@ export default function Home() {
                           nodes={graphData.nodes}
                           selectedNodeId={selectedNodeId}
                           onSelectNode={(id) => {
-                            setSelectedNodeId(id);
+                            handleSelectNode(id);
                             setIsMobileExplorerOpen(false);
                           }}
                           onClose={() => setIsMobileExplorerOpen(false)}
@@ -720,7 +740,7 @@ export default function Home() {
                         <FileInspector
                           selectedNode={selectedNode}
                           graphData={graphData}
-                          onSelectNode={(id) => setSelectedNodeId(id)}
+                          onSelectNode={(id) => handleSelectNode(id)}
                           onOpenSource={(path, lineRange) => {
                             setIsMobileInspectorOpen(false);
                             handleOpenSource(path, lineRange);
