@@ -94,7 +94,8 @@ export async function fetchTraceFlow(
     body: JSON.stringify({ repositoryId, startNodeId, endNodeId }),
   });
   if (!res.ok) {
-    throw new Error("Failed to calculate trace flow");
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || `Failed to calculate trace flow (${res.status})`);
   }
   return res.json();
 }

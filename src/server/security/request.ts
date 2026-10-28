@@ -90,14 +90,18 @@ export function hasTrustedOrigin(request: Request): boolean {
   }
 }
 
-export function isSafeIdentifier(value: unknown, maxLength = 160): value is string {
+export function isSafeIdentifier(value: unknown, maxLength = 512): value is string {
   return (
     typeof value === "string" &&
     value.length > 0 &&
     value.length <= maxLength &&
-    /^[A-Za-z0-9_.:-]+$/.test(value)
+    !value.includes("..") &&
+    !value.includes("\0") &&
+    /^[A-Za-z0-9_.:/@-]+$/.test(value)
   );
 }
+
+export const isSafeNodeId = isSafeIdentifier;
 
 export function isSafeQuestion(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.length <= 8_000;
