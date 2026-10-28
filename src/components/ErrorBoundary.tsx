@@ -69,24 +69,9 @@ export class ErrorBoundary extends Component<Props, State> {
                 SOMETHING WENT WRONG
               </h2>
             </div>
-            <p style={{ fontSize: "14px", color: "var(--ink, #11100F)", marginBottom: "16px" }}>
-              An unexpected error occurred while rendering the interface:
+            <p style={{ fontSize: "14px", color: "var(--ink, #11100F)", marginBottom: "24px" }}>
+              An unexpected error occurred while rendering the interface. Reload to restore the workspace.
             </p>
-            <pre
-              className="font-mono"
-              style={{
-                background: "rgba(0, 0, 0, 0.05)",
-                padding: "12px",
-                fontSize: "12px",
-                overflowX: "auto",
-                marginBottom: "24px",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-all",
-                color: "var(--ink, #11100F)",
-              }}
-            >
-              {this.state.error?.message || "Unknown error"}
-            </pre>
             <button
               onClick={this.handleReset}
               className="btn-primary"

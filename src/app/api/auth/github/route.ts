@@ -25,5 +25,15 @@ export async function GET(request: Request) {
     githubAuthUrl += `&redirect_uri=${encodeURIComponent(redirectUri)}`;
   }
 
-  return NextResponse.redirect(githubAuthUrl);
+  const response = NextResponse.redirect(githubAuthUrl);
+  response.cookies.set({
+    name: "codeatlas_oauth_state",
+    value: state,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/api/auth/github/callback",
+    maxAge: 10 * 60,
+  });
+  return response;
 }

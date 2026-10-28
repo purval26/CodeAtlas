@@ -17,6 +17,15 @@ const userSessions = globalForAuth.userSessions || new Map<string, UserSession>(
 const oauthStates = globalForAuth.oauthStates || new Map<string, number>();
 globalForAuth.userSessions = userSessions;
 globalForAuth.oauthStates = oauthStates;
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function pruneExpiredSessions(): void {
+  const cutoff = Date.now() - SESSION_TTL_MS;
+  for (const [id, session] of userSessions.entries()) {
+    if (session.createdAt < cutoff) userSessions.delete(id);
+  }
+}
 
 // Parse cookie string into key-value map
 export function parseCookieString(cookieHeader: string | null): Record<string, string> {
@@ -37,7 +46,7 @@ export function createOAuthState(): string {
   oauthStates.set(state, Date.now());
 
   // Clean up states older than 10 minutes
-  const tenMinAgo = Date.now() - 10 * 60 * 1000;
+  const tenMinAgo = Date.now() - OAUTH_STATE_TTL_MS;
   for (const [st, time] of oauthStates.entries()) {
     if (time < tenMinAgo) oauthStates.delete(st);
   }
@@ -46,7 +55,11 @@ export function createOAuthState(): string {
 }
 
 export function verifyAndConsumeOAuthState(state: string): boolean {
-  if (!state || !oauthStates.has(state)) return false;
+  const createdAt = oauthStates.get(state);
+  if (!state || !createdAt || Date.now() - createdAt > OAUTH_STATE_TTL_MS) {
+    if (state) oauthStates.delete(state);
+    return false;
+  }
   oauthStates.delete(state);
   return true;
 }
@@ -66,21 +79,13 @@ export function destroySession(sessionId: string): void {
 }
 
 export function getSession(cookieHeader: string | null, authHeader?: string | null): UserSession | undefined {
+  void authHeader; // GitHub OAuth tokens must never be accepted as application bearer tokens.
+  pruneExpiredSessions();
   const cookies = parseCookieString(cookieHeader);
   const sessionId = cookies["codeatlas_session"];
   if (sessionId && userSessions.has(sessionId)) {
     return userSessions.get(sessionId);
   }
-
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7).trim();
-    for (const session of userSessions.values()) {
-      if (session.accessToken === token) {
-        return session;
-      }
-    }
-  }
-
   return undefined;
 }
 

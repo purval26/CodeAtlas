@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { verifyAndConsumeOAuthState, createSession } from "@/server/auth/session";
+import { verifyAndConsumeOAuthState, createSession, parseCookieString } from "@/server/auth/session";
 
 export async function GET(request: Request) {
   const urlObj = new URL(request.url);
   const code = urlObj.searchParams.get("code");
   const state = urlObj.searchParams.get("state");
+  const expectedState = parseCookieString(request.headers.get("cookie"))["codeatlas_oauth_state"];
 
   const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
 
-  if (!code || !state || !verifyAndConsumeOAuthState(state)) {
+  if (!code || !state || state !== expectedState || !verifyAndConsumeOAuthState(state)) {
     return NextResponse.redirect(`${baseUrl}/?auth_error=invalid_state_or_code`);
   }
 
@@ -73,9 +74,11 @@ export async function GET(request: Request) {
       value: sessionId,
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
+    response.cookies.delete("codeatlas_oauth_state");
 
     return response;
   } catch (err: any) {

@@ -32,7 +32,35 @@ function isValidGitHubRepo(repo: string): boolean {
 
 function isValidGitHubBranch(branch?: string): boolean {
   if (!branch) return true;
-  return !branch.includes("..") && !branch.startsWith(".") && !branch.includes("\\");
+  if (branch.length > 255) return false;
+
+  // Reject directory traversal, consecutive slashes, leading/trailing slashes, and git ref operators
+  if (
+    branch.includes("..") ||
+    branch.includes("//") ||
+    branch.startsWith("/") ||
+    branch.endsWith("/") ||
+    branch.startsWith(".") ||
+    branch.endsWith(".lock") ||
+    branch.includes("@{")
+  ) {
+    return false;
+  }
+
+  // Reject forbidden git ref characters & whitespace: ~ ^ : ? * [ ] \ and ASCII control chars (0-31, 127)
+  if (/[\s~^:?*\[\\\]\x00-\x1f\x7f]/.test(branch)) {
+    return false;
+  }
+
+  // Verify each slash-separated segment doesn't start with a dot or end with .lock
+  const segments = branch.split("/");
+  for (const seg of segments) {
+    if (!seg || seg.startsWith(".") || seg.endsWith(".lock")) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function parseGitHubUrl(rawUrl: string): ParsedRepoUrl {
@@ -55,14 +83,14 @@ export function parseGitHubUrl(rawUrl: string): ParsedRepoUrl {
     };
   }
 
-  // Regex for https://github.com/owner/repo or github.com/owner/repo or owner/repo
-  const urlPattern = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(?:\/tree\/([a-zA-Z0-9_.-]+))?$/;
+  // Support https://github.com/owner/repo or github.com/owner/repo with optional multi-segment branch path (e.g. tree/feature/auth)
+  const urlPattern = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(?:\/tree\/(.+))?$/;
   const match = cleaned.match(urlPattern);
 
   if (match) {
     const owner = match[1];
     const repo = match[2];
-    const branch = match[3];
+    const branch = match[3] ? match[3].replace(/\/+$/, "") : undefined;
 
     if (!isValidGitHubOwner(owner) || !isValidGitHubRepo(repo) || !isValidGitHubBranch(branch)) {
       throw new Error(
@@ -167,6 +195,21 @@ export async function fetchRepositoryFiles(
 
   const metaData = (await metaRes.json()) as any;
   const defaultBranch = parsed.branch || metaData.default_branch || "main";
+
+  // Resolve actual Git commit SHA (distinguishing it from the Git tree object SHA)
+  let commitSha: string | undefined = undefined;
+  try {
+    const commitUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/commits?sha=${encodeURIComponent(defaultBranch)}&per_page=1`;
+    const commitRes = await fetch(commitUrl, { headers });
+    if (commitRes.ok) {
+      const commitList = (await commitRes.json()) as any;
+      if (Array.isArray(commitList) && commitList.length > 0 && typeof commitList[0]?.sha === "string") {
+        commitSha = commitList[0].sha;
+      }
+    }
+  } catch {
+    // Non-fatal if commit SHA lookup encounters network/rate issues
+  }
 
   // Check repo size in KB (if repo is over 150MB, reject early)
   if (metaData.size && metaData.size > 150000) {
@@ -299,7 +342,7 @@ export async function fetchRepositoryFiles(
     name: parsed.repo,
     url: `https://github.com/${parsed.owner}/${parsed.repo}`,
     branch: defaultBranch,
-    commitSha: typeof treeData?.sha === "string" ? treeData.sha : undefined,
+    commitSha: commitSha,
     isPrivate: Boolean(metaData?.private || metaData?.visibility === "private"),
     language: metaData?.language || "TypeScript",
     analyzedAt: new Date().toISOString(),

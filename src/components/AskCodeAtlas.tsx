@@ -255,7 +255,6 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
           model: selectedModel,
           apiKey: settings.customApiKey || undefined,
           provider: settings.customApiProvider,
-          baseUrl: settings.customApiBaseUrl || undefined,
           onToken: (token) => {
             accumulated += token;
             setResponse({
@@ -274,7 +273,6 @@ export const AskCodeAtlas: React.FC<AskCodeAtlasProps> = ({
             model: selectedModel,
             apiKey: settings.customApiKey || undefined,
             provider: settings.customApiProvider,
-            baseUrl: settings.customApiBaseUrl || undefined,
           });
         } else {
           throw streamErr;

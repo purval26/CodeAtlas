@@ -172,12 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setTestMessage("Testing API authentication...");
 
     try {
-      const baseUrl = settings.customApiBaseUrl.trim() || "https://openrouter.ai/api/v1";
-      const targetUrl = baseUrl.endsWith("/auth/key")
-        ? baseUrl
-        : baseUrl.includes("openrouter.ai")
-        ? "https://openrouter.ai/api/v1/auth/key"
-        : `${baseUrl.replace(/\/+$/, "")}/models`;
+      const targetUrl = "https://openrouter.ai/api/v1/auth/key";
 
       const res = await fetch(targetUrl, {
         headers: {
@@ -194,15 +189,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           setTestStatus("error");
           setTestMessage(`Authentication failed (${res.status}): Invalid API key.`);
         } else {
-          // If custom endpoint returned something else, it reached the server
           setTestStatus("success");
-          setTestMessage(`Key accepted (HTTP ${res.status}). Server responded.`);
+          setTestMessage(`Provider responded (HTTP ${res.status}).`);
         }
       }
     } catch (err: any) {
-      // CORS or network error on direct endpoint, but key is stored safely
-      setTestStatus("success");
-      setTestMessage("API Key stored. Proxy will route requests through backend server.");
+      setTestStatus("error");
+      setTestMessage("Could not verify the key from this browser. You can still save it for this session.");
     }
   };
 
@@ -614,29 +607,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
 
-                {/* Custom Base URL (if custom or desired) */}
                 {settings.customApiProvider === "custom" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     <label className="font-mono" style={{ fontSize: "11px", fontWeight: 700 }}>
-                      CUSTOM BASE URL (OPENAI-COMPATIBLE):
+                      CUSTOM ENDPOINTS:
                     </label>
-                    <input
-                      type="text"
-                      value={settings.customApiBaseUrl}
-                      onChange={(e) => updateSettings({ customApiBaseUrl: e.target.value.trim() })}
-                      placeholder="http://localhost:11434/v1"
-                      className="font-mono"
-                      style={{
-                        width: "100%",
-                        height: "36px",
-                        padding: "0 10px",
-                        fontSize: "12px",
-                        background: "var(--paper)",
-                        border: "1.5px solid var(--border)",
-                        color: "var(--ink)",
-                        boxSizing: "border-box",
-                      }}
-                    />
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--muted)", lineHeight: 1.5 }}>
+                      Disabled for security. CodeAtlas only sends repository context to supported providers.
+                    </p>
                   </div>
                 )}
               </div>

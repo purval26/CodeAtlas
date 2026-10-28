@@ -1,7 +1,8 @@
-import { AskResponse, SourceReference } from "@/types";
+import { AskResponse, AVAILABLE_MODELS, SourceReference } from "@/types";
 import { ParsedFileResult } from "../parser/ast";
 import { RetrievalResult } from "./retrieval";
 import { validateCitations } from "./citationValidator";
+import { getGoldenDemoAnswer } from "../demo/goldenDemo";
 
 const SYSTEM_PROMPT = `You are CodeAtlas, a repository analysis assistant.
 Your thesis: Structure first. Reason second. Evidence always.
@@ -36,24 +37,6 @@ At the very end of your response, provide the citations in a fenced JSON block w
 ]
 \`\`\`
 Every cited line range MUST match the actual line numbers in the provided context.`;
-
-const GOLDEN_ANSWER = `When a user logs in, the following flow occurs:
-
-1. **User Submission**: In \`src/features/auth/Login.tsx\`, the user inputs credentials into the \`Login\` component and submits the form. The component invokes \`authenticateUser(credentials)\`.
-2. **Authentication Service**: \`src/services/authenticate.ts\` calls \`apiClient.post<AuthResponse>('/auth/login', credentials)\` to verify credentials against the backend.
-3. **API Client Request**: In \`src/lib/api.ts\`, \`ApiClient.post\` injects the authentication headers if a token exists and handles the network request.
-4. **Auth State Management**: In \`src/context/AuthProvider.tsx\`, \`AuthProvider\` manages global authentication state (\`isAuthenticated\`, \`token\`, \`user\`) and broadcasts updates through \`AuthContext\`.
-5. **Route Protection**: In \`src/routes/ProtectedRoute.tsx\`, \`ProtectedRoute\` observes \`isAuthenticated\`. If authenticated, it renders the protected children; otherwise, it redirects to the fallback URL.
-
-\`\`\`citations
-[
-  { "filePath": "src/features/auth/Login.tsx", "startLine": 14, "endLine": 27 },
-  { "filePath": "src/services/authenticate.ts", "startLine": 4, "endLine": 11 },
-  { "filePath": "src/lib/api.ts", "startLine": 6, "endLine": 27 },
-  { "filePath": "src/context/AuthProvider.tsx", "startLine": 18, "endLine": 38 },
-  { "filePath": "src/routes/ProtectedRoute.tsx", "startLine": 9, "endLine": 16 }
-]
-\`\`\``;
 
 export class LlmAdapter {
   private primaryApiKey?: string;
@@ -281,6 +264,9 @@ export class LlmAdapter {
     customApiKey?: string,
     customBaseUrl?: string
   ): Promise<{ content: string; modelUsed: string }> {
+    if (customBaseUrl) {
+      throw new Error("Custom AI endpoints are not supported.");
+    }
     const effectiveKey = customApiKey || this.primaryApiKey;
     if (
       effectiveKey === "invalid-test-key-trigger-failure" &&
@@ -290,11 +276,7 @@ export class LlmAdapter {
     }
 
     const defaultUrl = "https://openrouter.ai/api/v1/chat/completions";
-    const url = customBaseUrl
-      ? customBaseUrl.endsWith("/chat/completions")
-        ? customBaseUrl
-        : `${customBaseUrl.replace(/\/+$/, "")}/chat/completions`
-      : defaultUrl;
+    const url = defaultUrl;
 
     const targetModel =
       modelId ||
@@ -331,50 +313,47 @@ export class LlmAdapter {
         "X-Title": "CodeAtlas",
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
     });
 
     let activeModel = targetModel;
 
-    // Automatic fallback for free models if rate limit (429), capacity limit (503), or error occurs
+    // Predictable single-tier fallback for free models:
+    // If Primary (Nemotron 3 Ultra) encounters 429/503/500, attempt exactly one known-good fallback: Nemotron 3.5 Lightning
     if (
       !res.ok &&
       (mode === "free" || targetModel.includes(":free")) &&
       (res.status === 429 || res.status === 404 || res.status === 503 || res.status === 502 || res.status === 500)
     ) {
-      const freeFallbacks = [
-        "qwen/qwen-2.5-coder-32b-instruct:free",
-        "google/gemini-2.0-flash-exp:free",
-        "nvidia/nemotron-3.5-lightning:free",
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-      ].filter((m) => m !== targetModel);
+      const fallbackTarget =
+        targetModel === "nvidia/nemotron-3-ultra-550b-a55b:free"
+          ? "nvidia/nemotron-3.5-lightning:free"
+          : "nvidia/nemotron-3-ultra-550b-a55b:free";
 
-      for (const fallbackTarget of freeFallbacks) {
-        body.model = fallbackTarget;
-        try {
-          const fallbackRes = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${this.primaryApiKey}`,
-              "HTTP-Referer": "https://codeatlas.dev",
-              "X-Title": "CodeAtlas",
-            },
-            body: JSON.stringify(body),
-          });
-          if (fallbackRes.ok) {
-            res = fallbackRes;
-            activeModel = fallbackTarget;
-            break;
-          }
-        } catch {
-          // Continue to next fallback candidate
+      body.model = fallbackTarget;
+      try {
+        const fallbackRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${effectiveKey}`,
+            "HTTP-Referer": "https://codeatlas.dev",
+            "X-Title": "CodeAtlas",
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30_000),
+        });
+        if (fallbackRes.ok) {
+          res = fallbackRes;
+          activeModel = fallbackTarget;
         }
+      } catch {
+        // Fallback network failure handled by the !res.ok check below
       }
     }
 
     if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(`OpenRouter API error (${res.status} ${res.statusText}): ${errorText}`);
+      throw new Error(`OpenRouter API request failed (${res.status}).`);
     }
 
     const data = (await res.json()) as any;
@@ -396,6 +375,9 @@ export class LlmAdapter {
     customApiKey?: string,
     customBaseUrl?: string
   ): Promise<{ content: string; modelUsed: string }> {
+    if (customBaseUrl) {
+      throw new Error("Custom AI endpoints are not supported.");
+    }
     const effectiveKey = customApiKey || this.primaryApiKey;
     if (
       effectiveKey === "invalid-test-key-trigger-failure" &&
@@ -405,11 +387,7 @@ export class LlmAdapter {
     }
 
     const defaultUrl = "https://openrouter.ai/api/v1/chat/completions";
-    const url = customBaseUrl
-      ? customBaseUrl.endsWith("/chat/completions")
-        ? customBaseUrl
-        : `${customBaseUrl.replace(/\/+$/, "")}/chat/completions`
-      : defaultUrl;
+    const url = defaultUrl;
 
     const targetModel =
       modelId ||
@@ -446,50 +424,47 @@ export class LlmAdapter {
         "X-Title": "CodeAtlas",
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
     });
 
     let activeModel = targetModel;
 
-    // Automatic fallback for free models if rate limit or error occurs
+    // Predictable single-tier fallback for free models:
+    // If Primary (Nemotron 3 Ultra) encounters 429/503/500, attempt exactly one known-good fallback: Nemotron 3.5 Lightning
     if (
       !res.ok &&
       (mode === "free" || targetModel.includes(":free")) &&
       (res.status === 429 || res.status === 404 || res.status === 503 || res.status === 502 || res.status === 500)
     ) {
-      const freeFallbacks = [
-        "qwen/qwen-2.5-coder-32b-instruct:free",
-        "google/gemini-2.0-flash-exp:free",
-        "nvidia/nemotron-3.5-lightning:free",
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-      ].filter((m) => m !== targetModel);
+      const fallbackTarget =
+        targetModel === "nvidia/nemotron-3-ultra-550b-a55b:free"
+          ? "nvidia/nemotron-3.5-lightning:free"
+          : "nvidia/nemotron-3-ultra-550b-a55b:free";
 
-      for (const fallbackTarget of freeFallbacks) {
-        body.model = fallbackTarget;
-        try {
-          const fallbackRes = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${this.primaryApiKey}`,
-              "HTTP-Referer": "https://codeatlas.dev",
-              "X-Title": "CodeAtlas",
-            },
-            body: JSON.stringify(body),
-          });
-          if (fallbackRes.ok) {
-            res = fallbackRes;
-            activeModel = fallbackTarget;
-            break;
-          }
-        } catch {
-          // Continue to next fallback candidate
+      body.model = fallbackTarget;
+      try {
+        const fallbackRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${effectiveKey}`,
+            "HTTP-Referer": "https://codeatlas.dev",
+            "X-Title": "CodeAtlas",
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30_000),
+        });
+        if (fallbackRes.ok) {
+          res = fallbackRes;
+          activeModel = fallbackTarget;
         }
+      } catch {
+        // Fallback network failure handled by the !res.ok check below
       }
     }
 
     if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(`OpenRouter API error (${res.status} ${res.statusText}): ${errorText}`);
+      throw new Error(`OpenRouter API request failed (${res.status}).`);
     }
 
     let content = "";
@@ -637,59 +612,7 @@ export class LlmAdapter {
       return "INSUFFICIENT EVIDENCE: CodeAtlas could not find enough repository evidence to answer this confidently.";
     }
 
-    // 2. Check if golden login flow question
-    if (
-      (qLower.includes("log in") || qLower.includes("login")) &&
-      !qLower.includes("where") &&
-      !qLower.includes("depend") &&
-      parsedFiles.has("src/features/auth/Login.tsx")
-    ) {
-      return GOLDEN_ANSWER;
-    }
-
-    // 3. Location question: "Where is authentication implemented?" (AI.md Section 18 Test 2)
-    if (
-      (qLower.includes("where") || qLower.includes("location") || qLower.includes("which file")) &&
-      (qLower.includes("auth") || qLower.includes("login")) &&
-      parsedFiles.has("src/features/auth/Login.tsx")
-    ) {
-      return `Authentication is implemented across the following repository modules:
-
-1. **Login User Interface**: In \`src/features/auth/Login.tsx\`, the \`Login\` component captures credentials and triggers authentication.
-2. **Authentication Service**: In \`src/services/authenticate.ts\`, \`authenticateUser\` makes the backend network request to \`/auth/login\`.
-3. **Session & Auth State Management**: In \`src/context/AuthProvider.tsx\`, \`AuthProvider\` manages \`isAuthenticated\` state, tokens, and active user context.
-4. **Route Protection**: In \`src/routes/ProtectedRoute.tsx\`, route protection evaluates authentication status before rendering private content.
-
-\`\`\`citations
-[
-  { "filePath": "src/features/auth/Login.tsx", "startLine": 14, "endLine": 27 },
-  { "filePath": "src/services/authenticate.ts", "startLine": 4, "endLine": 11 },
-  { "filePath": "src/context/AuthProvider.tsx", "startLine": 18, "endLine": 38 },
-  { "filePath": "src/routes/ProtectedRoute.tsx", "startLine": 9, "endLine": 16 }
-]
-\`\`\``;
-    }
-
-    // 4. Dependency question: "What depends on AuthProvider?" (AI.md Section 18 Test 3)
-    if (
-      (qLower.includes("depend") || qLower.includes("import")) &&
-      qLower.includes("authprovider") &&
-      parsedFiles.has("src/context/AuthProvider.tsx")
-    ) {
-      return `Based on the repository dependency graph, the following modules depend on and import \`AuthProvider\`:
-
-1. **ProtectedRoute** (\`src/routes/ProtectedRoute.tsx\`): Consumes authentication state from \`AuthProvider\` to guard access and redirect unauthenticated requests.
-2. **Login Component** (\`src/features/auth/Login.tsx\`): Coordinates with authentication context and credentials flow.
-
-\`\`\`citations
-[
-  { "filePath": "src/routes/ProtectedRoute.tsx", "startLine": 9, "endLine": 16 },
-  { "filePath": "src/features/auth/Login.tsx", "startLine": 14, "endLine": 27 }
-]
-\`\`\``;
-    }
-
-    // 5. Synthesize structured answer from retrieved snippets with clean hierarchy (Priority 2 & 4)
+    // 2. Synthesize structured answer from retrieved snippets with clean hierarchy (Priority 2 & 4)
     const lines: string[] = [];
     lines.push(`### Summary\n\nBased on the analyzed repository evidence, here is how the codebase implements functionality for "${question}":\n`);
     lines.push(`### Architectural Implementation\n`);
@@ -752,15 +675,26 @@ export class LlmAdapter {
     const customBaseUrl = typeof options === "object" ? options.baseUrl?.trim() : undefined;
     const customProvider = typeof options === "object" ? options.provider : undefined;
 
+    if (customBaseUrl) {
+      throw new Error("Custom AI endpoints are not supported.");
+    }
+
     const hasEffectiveKey = Boolean(customApiKey || this.primaryApiKey);
     const effectiveProvider = customProvider || (customApiKey ? "openrouter" : this.primaryProvider);
 
-    const targetModel =
+    let targetModel =
       typeof options === "object" && options.model
         ? options.model
         : mode === "paid"
         ? this.getPaidModel()
         : this.getFreeModel();
+
+    if (!customApiKey) {
+      const isAllowed = AVAILABLE_MODELS.some((m) => m.id === targetModel);
+      if (!isAllowed) {
+        targetModel = mode === "paid" ? this.getPaidModel() : this.getFreeModel();
+      }
+    }
 
     if (retrieval.insufficientEvidence || retrieval.snippets.length === 0) {
       return {
@@ -776,15 +710,9 @@ export class LlmAdapter {
     let rawOutput = "";
     let modelUsed = targetModel;
 
-    const qLower = question.toLowerCase();
-    if (
-      !hasEffectiveKey &&
-      (qLower.includes("log in") || qLower.includes("login")) &&
-      !qLower.includes("where") &&
-      !qLower.includes("depend") &&
-      parsedFiles.has("src/features/auth/Login.tsx")
-    ) {
-      rawOutput = GOLDEN_ANSWER;
+    const goldenDemoAnswer = !hasEffectiveKey ? getGoldenDemoAnswer(question, parsedFiles) : null;
+    if (goldenDemoAnswer) {
+      rawOutput = goldenDemoAnswer;
       modelUsed = "codeatlas/deterministic-synthesizer";
     } else if (hasEffectiveKey) {
       // Live AI reasoning provider
@@ -868,15 +796,26 @@ export class LlmAdapter {
     const customBaseUrl = typeof options === "object" ? options.baseUrl?.trim() : undefined;
     const customProvider = typeof options === "object" ? options.provider : undefined;
 
+    if (customBaseUrl) {
+      throw new Error("Custom AI endpoints are not supported.");
+    }
+
     const hasEffectiveKey = Boolean(customApiKey || this.primaryApiKey);
     const effectiveProvider = customProvider || (customApiKey ? "openrouter" : this.primaryProvider);
 
-    const targetModel =
+    let targetModel =
       typeof options === "object" && options.model
         ? options.model
         : mode === "paid"
         ? this.getPaidModel()
         : this.getFreeModel();
+
+    if (!customApiKey) {
+      const isAllowed = AVAILABLE_MODELS.some((m) => m.id === targetModel);
+      if (!isAllowed) {
+        targetModel = mode === "paid" ? this.getPaidModel() : this.getFreeModel();
+      }
+    }
 
     if (retrieval.insufficientEvidence || retrieval.snippets.length === 0) {
       const msg =
@@ -894,16 +833,10 @@ export class LlmAdapter {
     let rawOutput = "";
     let modelUsed = targetModel;
 
-    const qLower = question.toLowerCase();
-    const isGolden =
-      !hasEffectiveKey &&
-      (qLower.includes("log in") || qLower.includes("login")) &&
-      !qLower.includes("where") &&
-      !qLower.includes("depend") &&
-      parsedFiles.has("src/features/auth/Login.tsx");
+    const goldenDemoAnswer = !hasEffectiveKey ? getGoldenDemoAnswer(question, parsedFiles) : null;
 
-    if (isGolden) {
-      rawOutput = GOLDEN_ANSWER;
+    if (goldenDemoAnswer) {
+      rawOutput = goldenDemoAnswer;
       modelUsed = "codeatlas/deterministic-synthesizer";
       const chunkSize = 20;
       for (let i = 0; i < rawOutput.length; i += chunkSize) {

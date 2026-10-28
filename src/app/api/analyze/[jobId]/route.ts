@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { jobManager } from "@/server/jobs";
+import { getSession } from "@/server/auth/session";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
@@ -16,6 +17,14 @@ export async function GET(
       },
       { status: 404 }
     );
+  }
+
+  const ownerUserId = jobManager.getJobOwnerId(jobId);
+  if (ownerUserId !== undefined) {
+    const session = getSession(request.headers.get("cookie"));
+    if (!session || session.user.id !== ownerUserId) {
+      return NextResponse.json({ error: "UNAUTHORIZED", message: "You are not authorized to view this analysis job." }, { status: 403 });
+    }
   }
 
   return NextResponse.json(job, { status: 200 });

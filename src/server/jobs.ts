@@ -127,6 +127,11 @@ export class JobManager {
     return this.jobs.get(id)?.job;
   }
 
+  public getJobOwnerId(id: string): number | undefined {
+    this.pruneExpired();
+    return this.jobs.get(id)?.userId;
+  }
+
   public getRepositoryData(repositoryId: string): StoredRepoData | undefined {
     this.pruneExpired();
     const entry = this.repositories.get(repositoryId);
@@ -148,6 +153,7 @@ export class JobManager {
       job: updated,
       createdAt: existing.createdAt,
       githubToken: existing.githubToken,
+      userId: existing.userId,
     });
   }
 
@@ -175,6 +181,10 @@ export class JobManager {
           });
         }
       );
+
+      if (repository.isPrivate && entry.userId === undefined) {
+        throw new Error("Private repository analysis requires an authenticated GitHub session.");
+      }
 
       await new Promise((r) => setTimeout(r, 60));
 

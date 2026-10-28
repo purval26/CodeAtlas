@@ -3,9 +3,16 @@ import { jobManager } from "@/server/jobs";
 import { parseGitHubUrl } from "@/server/ingestion/github";
 import { getSession } from "@/server/auth/session";
 import { analyzeRateLimiter, getClientIp } from "@/server/middleware/rateLimiter";
+import { hasAcceptableJsonBody, hasTrustedOrigin } from "@/server/security/request";
 
 export async function POST(request: Request) {
   try {
+    if (!hasTrustedOrigin(request)) {
+      return NextResponse.json({ error: "FORBIDDEN", message: "Cross-origin requests are not allowed." }, { status: 403 });
+    }
+    if (!hasAcceptableJsonBody(request)) {
+      return NextResponse.json({ error: "PAYLOAD_TOO_LARGE", message: "Request body is too large." }, { status: 413 });
+    }
     const ip = getClientIp(request);
     const rateCheck = analyzeRateLimiter.check(ip);
     if (!rateCheck.allowed) {
@@ -39,12 +46,11 @@ export async function POST(request: Request) {
 
     // Check for user session or optional custom token
     const cookieHeader = request.headers.get("cookie");
-    const authHeader = request.headers.get("authorization");
-    const session = getSession(cookieHeader, authHeader);
+    const session = getSession(cookieHeader);
 
-    // Support either session OAuth token, custom token in body/header, or server GITHUB_TOKEN
-    const customToken = body?.token || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined);
-    const token = session?.accessToken || customToken || process.env.GITHUB_TOKEN;
+    // Private repository access is intentionally limited to the OAuth session.
+    // Arbitrary GitHub tokens in request bodies are easy to leak and cannot be tied to a user.
+    const token = session?.accessToken || process.env.GITHUB_TOKEN;
     const userId = session?.user?.id;
 
     const job = jobManager.createJob(url, token, userId);

@@ -31,6 +31,13 @@ export class MemoryRateLimiter {
 
     validTimestamps.push(now);
     this.hits.set(ip, validTimestamps);
+
+    // Keep an in-memory fallback bounded when anonymous clients rotate identifiers.
+    if (this.hits.size > 10_000) {
+      for (const [key, entries] of this.hits.entries()) {
+        if (entries.every((timestamp) => timestamp <= windowStart)) this.hits.delete(key);
+      }
+    }
     return { allowed: true };
   }
 
@@ -40,7 +47,8 @@ export class MemoryRateLimiter {
 }
 
 export function getClientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
+  // Only platform-added headers are trusted. x-forwarded-for is client controlled.
+  const forwarded = request.headers.get("x-vercel-forwarded-for");
   if (forwarded) {
     return forwarded.split(",")[0].trim();
   }

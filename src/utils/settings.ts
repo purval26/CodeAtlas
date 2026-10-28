@@ -98,6 +98,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const SETTINGS_KEY = "codeatlas_unified_settings";
+const CUSTOM_API_KEY_SESSION_KEY = "codeatlas_custom_api_key_session";
 export const SETTINGS_EVENT = "codeatlas_settings_changed";
 
 /**
@@ -115,6 +116,9 @@ export function loadSettings(): AppSettings {
     if (raw) {
       const parsed = JSON.parse(raw);
       base = { ...base, ...parsed };
+      if (typeof parsed.customApiKey === "string" && parsed.customApiKey) {
+        sessionStorage.setItem(CUSTOM_API_KEY_SESSION_KEY, parsed.customApiKey);
+      }
     }
   } catch (e) {
     console.warn("Failed to parse stored unified settings:", e);
@@ -122,8 +126,15 @@ export function loadSettings(): AppSettings {
 
   // Backwards compatibility with standalone keys
   try {
+    const sessionApiKey = sessionStorage.getItem(CUSTOM_API_KEY_SESSION_KEY);
+    if (sessionApiKey) base.customApiKey = sessionApiKey;
+
     const legacyApiKey = localStorage.getItem("codeatlas_custom_api_key");
-    if (legacyApiKey && !base.customApiKey) base.customApiKey = legacyApiKey;
+    if (legacyApiKey && !base.customApiKey) {
+      base.customApiKey = legacyApiKey;
+      sessionStorage.setItem(CUSTOM_API_KEY_SESSION_KEY, legacyApiKey);
+      localStorage.removeItem("codeatlas_custom_api_key");
+    }
 
     const legacyProvider = localStorage.getItem("codeatlas_custom_provider") as ApiProviderType | null;
     if (legacyProvider) base.customApiProvider = legacyProvider;
@@ -165,6 +176,10 @@ export function loadSettings(): AppSettings {
     // ignore legacy parsing errors
   }
 
+  // Server-side custom endpoints are disabled to prevent SSRF and credential
+  // exfiltration. Clear any value persisted by an older version.
+  base.customApiBaseUrl = "";
+
   return base;
 }
 
@@ -180,13 +195,15 @@ export function saveSettings(partial: Partial<AppSettings>): AppSettings {
   const next: AppSettings = { ...current, ...partial };
 
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+    const { customApiKey, ...persistedSettings } = next;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(persistedSettings));
 
     // Sync legacy keys for components reading them directly
     if (partial.customApiKey !== undefined) {
       if (partial.customApiKey) {
-        localStorage.setItem("codeatlas_custom_api_key", partial.customApiKey);
+        sessionStorage.setItem(CUSTOM_API_KEY_SESSION_KEY, partial.customApiKey);
       } else {
+        sessionStorage.removeItem(CUSTOM_API_KEY_SESSION_KEY);
         localStorage.removeItem("codeatlas_custom_api_key");
       }
     }
@@ -194,7 +211,7 @@ export function saveSettings(partial: Partial<AppSettings>): AppSettings {
       localStorage.setItem("codeatlas_custom_provider", partial.customApiProvider);
     }
     if (partial.customApiBaseUrl !== undefined) {
-      localStorage.setItem("codeatlas_custom_base_url", partial.customApiBaseUrl);
+      localStorage.removeItem("codeatlas_custom_base_url");
     }
     if (partial.customModels !== undefined) {
       localStorage.setItem("codeatlas_custom_models", JSON.stringify(partial.customModels));

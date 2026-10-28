@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { jobManager } from "@/server/jobs";
 import { getSession, isAuthorizedForRepo } from "@/server/auth/session";
+import { isSafeIdentifier } from "@/server/security/request";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ repositoryId: string }> }
 ) {
   const { repositoryId } = await params;
+  if (!isSafeIdentifier(repositoryId)) {
+    return NextResponse.json({ error: "BAD_REQUEST", message: "Invalid repository identifier." }, { status: 400 });
+  }
   const repoData = jobManager.getRepositoryData(repositoryId);
 
   if (!repoData) {
@@ -20,8 +24,7 @@ export async function GET(
   }
 
   const cookieHeader = request.headers.get("cookie");
-  const authHeader = request.headers.get("authorization");
-  const session = getSession(cookieHeader, authHeader);
+  const session = getSession(cookieHeader);
 
   if (!isAuthorizedForRepo(session, repoData)) {
     return NextResponse.json(

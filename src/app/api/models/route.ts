@@ -49,6 +49,9 @@ async function getLiveOpenRouterModelIds(): Promise<Set<string>> {
 
 export async function GET(request: Request) {
   const customApiKey = request.headers.get("x-custom-api-key")?.trim();
+  if (customApiKey && customApiKey.length > 2_048) {
+    return NextResponse.json({ error: "BAD_REQUEST", message: "API key is too long." }, { status: 400 });
+  }
   const hasServerApiKey = llmAdapter.hasApiKey();
   const hasApiKey = Boolean(customApiKey || hasServerApiKey);
 

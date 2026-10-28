@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jobManager } from "@/server/jobs";
 import { getSession, isAuthorizedForRepo } from "@/server/auth/session";
+import { isSafeIdentifier } from "@/server/security/request";
 
 export async function GET(
   request: Request,
@@ -10,7 +11,7 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const filePath = searchParams.get("path");
 
-  if (!filePath) {
+  if (!isSafeIdentifier(repositoryId) || !filePath || filePath.length > 1_024 || filePath.includes("\0")) {
     return NextResponse.json(
       { error: "BAD_REQUEST", message: "Query parameter 'path' is required." },
       { status: 400 }
@@ -26,8 +27,7 @@ export async function GET(
   }
 
   const cookieHeader = request.headers.get("cookie");
-  const authHeader = request.headers.get("authorization");
-  const session = getSession(cookieHeader, authHeader);
+  const session = getSession(cookieHeader);
 
   if (!isAuthorizedForRepo(session, repoData)) {
     return NextResponse.json(
@@ -40,6 +40,9 @@ export async function GET(
   }
 
   const normalizedPath = filePath.replace(/\\/g, "/").replace(/^\.?\//, "").trim();
+  if (!normalizedPath || normalizedPath.split("/").includes("..")) {
+    return NextResponse.json({ error: "BAD_REQUEST", message: "Path must be repository-relative." }, { status: 400 });
+  }
 
   // 1. Exact normalized path match
   let fileResult = repoData.parsedFiles.get(normalizedPath) || repoData.parsedFiles.get(filePath);

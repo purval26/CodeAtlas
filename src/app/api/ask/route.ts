@@ -5,9 +5,16 @@ import { llmAdapter } from "@/server/intelligence/instance";
 import { getSession, isAuthorizedForRepo } from "@/server/auth/session";
 import { AVAILABLE_MODELS } from "@/types";
 import { askRateLimiter, getClientIp } from "@/server/middleware/rateLimiter";
+import { hasAcceptableJsonBody, hasTrustedOrigin, isSafeIdentifier, isSafeQuestion } from "@/server/security/request";
 
 export async function POST(request: Request) {
   try {
+    if (!hasTrustedOrigin(request)) {
+      return NextResponse.json({ error: "FORBIDDEN", message: "Cross-origin requests are not allowed." }, { status: 403 });
+    }
+    if (!hasAcceptableJsonBody(request)) {
+      return NextResponse.json({ error: "PAYLOAD_TOO_LARGE", message: "Request body is too large." }, { status: 413 });
+    }
     const ip = getClientIp(request);
     const rateCheck = askRateLimiter.check(ip);
     if (!rateCheck.allowed) {
@@ -21,30 +28,63 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { repositoryId, question, mode, model, apiKey, provider, baseUrl } = body;
+    const { repositoryId, question, mode, model, provider, baseUrl } = body;
 
     // Check optional custom API key in headers as well
     const headerApiKey = request.headers.get("x-custom-api-key") || undefined;
-    const effectiveApiKey = (typeof apiKey === "string" && apiKey.trim()) || headerApiKey;
+    const effectiveApiKey = headerApiKey?.trim();
     const effectiveProvider = typeof provider === "string" ? provider.trim() : undefined;
     const effectiveBaseUrl = typeof baseUrl === "string" ? baseUrl.trim() : undefined;
 
-    if (!repositoryId || !question) {
+    if (!isSafeIdentifier(repositoryId) || !isSafeQuestion(question)) {
       return NextResponse.json(
         { error: "BAD_REQUEST", message: "Missing required 'repositoryId' or 'question'." },
         { status: 400 }
       );
     }
 
+    if (effectiveApiKey && effectiveApiKey.length > 2_048) {
+      return NextResponse.json({ error: "BAD_REQUEST", message: "API key is too long." }, { status: 400 });
+    }
+
+    // Requests are made from the server and include repository context. Allowing
+    // arbitrary endpoints would create an SSRF primitive and could disclose a
+    // server-managed provider key on retries.
+    if (effectiveBaseUrl) {
+      return NextResponse.json({ error: "BAD_REQUEST", message: "Custom AI endpoints are not supported. Use a supported provider configuration." }, { status: 400 });
+    }
+
+    if (mode === "custom" && !effectiveApiKey) {
+      return NextResponse.json(
+        { error: "BAD_REQUEST", message: "Custom model mode requires a valid custom API key." },
+        { status: 400 }
+      );
+    }
+
     if (model && typeof model === "string") {
-      const isBuiltin = AVAILABLE_MODELS.some((m) => m.id === model);
-      // Valid if it's a built-in model, or if user has custom model identifier with non-empty string
-      const isValidCustom = Boolean(model.trim() && (effectiveApiKey || model.includes("/") || model.length > 2));
-      if (!isBuiltin && !isValidCustom) {
-        return NextResponse.json(
-          { error: "BAD_REQUEST", message: `Invalid model: '${model}'.` },
-          { status: 400 }
-        );
+      const trimmedModel = model.trim();
+      const isBuiltin = AVAILABLE_MODELS.some((m) => m.id === trimmedModel);
+
+      if (effectiveApiKey) {
+        // User-funded request: validate model identifier format (prevent injection / control characters)
+        const isSafeCustomFormat = /^[a-zA-Z0-9_\-.:/]+$/.test(trimmedModel) && trimmedModel.length <= 128;
+        if (!isSafeCustomFormat) {
+          return NextResponse.json(
+            { error: "BAD_REQUEST", message: `Invalid custom model identifier: '${model}'.` },
+            { status: 400 }
+          );
+        }
+      } else {
+        // Server-funded request: strictly enforce allowlist against AVAILABLE_MODELS
+        if (!isBuiltin) {
+          return NextResponse.json(
+            {
+              error: "BAD_REQUEST",
+              message: `Invalid model '${model}'. For server-funded requests, model must be one of: ${AVAILABLE_MODELS.map((m) => m.id).join(", ")}. To use other models, provide your own API key in Settings.`,
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -57,8 +97,7 @@ export async function POST(request: Request) {
     }
 
     const cookieHeader = request.headers.get("cookie");
-    const authHeader = request.headers.get("authorization");
-    const session = getSession(cookieHeader, authHeader);
+    const session = getSession(cookieHeader);
 
     if (!isAuthorizedForRepo(session, repoData)) {
       return NextResponse.json(

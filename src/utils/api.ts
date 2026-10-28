@@ -122,7 +122,7 @@ export async function askCodeAtlas(
       "Content-Type": "application/json",
       ...(apiKey ? { "x-custom-api-key": apiKey } : {}),
     },
-    body: JSON.stringify({ repositoryId, question, mode, model, apiKey, provider, baseUrl }),
+    body: JSON.stringify({ repositoryId, question, mode, model, provider }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -156,7 +156,7 @@ export async function askCodeAtlasStream(
       Accept: "text/event-stream",
       ...(apiKey ? { "x-custom-api-key": apiKey } : {}),
     },
-    body: JSON.stringify({ repositoryId, question, mode, model, apiKey, provider, baseUrl, stream: true }),
+    body: JSON.stringify({ repositoryId, question, mode, model, provider, stream: true }),
   });
 
   if (!res.ok) {
@@ -252,7 +252,7 @@ export async function fetchAvailableModels(customApiKey?: string): Promise<{
     customApiKey !== undefined
       ? customApiKey
       : typeof window !== "undefined"
-      ? localStorage.getItem("codeatlas_custom_api_key") || ""
+      ? sessionStorage.getItem("codeatlas_custom_api_key_session") || ""
       : "";
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
