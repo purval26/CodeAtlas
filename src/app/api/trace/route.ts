@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     const { nodes, edges } = repoData.graphData;
-    const result = traceDependencyFlow(startNodeId, endNodeId, nodes, edges);
+    const result = traceDependencyFlow(startNodeId, endNodeId, nodes, edges, repoData.parsedFiles);
 
     return NextResponse.json(result, { status: 200 });
   } catch (err: any) {

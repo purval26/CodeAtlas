@@ -53,6 +53,36 @@ export interface GraphEdge {
   source: string;
   target: string;
   type: "imports";
+  specifier?: string;
+  importedSymbols?: string[];
+  line?: number;
+  isTypeOnly?: boolean;
+}
+
+export interface TraceHop {
+  fromId: string;
+  fromLabel: string;
+  fromPath?: string;
+  toId: string;
+  toLabel: string;
+  toPath?: string;
+  edgeId: string;
+  specifier?: string;
+  importedSymbols: string[];
+  line?: number;
+  codeSnippet?: string;
+  isTypeOnly?: boolean;
+  stepDescription: string;
+}
+
+export interface TraceFlowResult {
+  found: boolean;
+  reverseFound?: boolean;
+  nodePath: string[];
+  edgePath: string[];
+  readableSteps: string[];
+  hops: TraceHop[];
+  summary: string;
 }
 
 export interface SourceReference {

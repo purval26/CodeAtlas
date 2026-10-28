@@ -56,12 +56,31 @@ export function buildDependencyGraph(
         if (nodesMap.has(targetNodeId)) {
           if (targetNodeId !== sourceNodeId) {
             const edgeId = `edge:${sourceNodeId}->${targetNodeId}`;
-            edgesMap.set(edgeId, {
-              id: edgeId,
-              source: sourceNodeId,
-              target: targetNodeId,
-              type: "imports",
-            });
+            const existingEdge = edgesMap.get(edgeId);
+            if (existingEdge) {
+              if (imp.names.length > 0) {
+                const combined = new Set([...(existingEdge.importedSymbols || []), ...imp.names]);
+                existingEdge.importedSymbols = Array.from(combined);
+              }
+              if (!existingEdge.line || (imp.line && imp.line < existingEdge.line)) {
+                existingEdge.line = imp.line;
+                existingEdge.specifier = imp.specifier;
+              }
+              if (!imp.isTypeOnly) {
+                existingEdge.isTypeOnly = false;
+              }
+            } else {
+              edgesMap.set(edgeId, {
+                id: edgeId,
+                source: sourceNodeId,
+                target: targetNodeId,
+                type: "imports",
+                specifier: imp.specifier,
+                importedSymbols: imp.names.length > 0 ? [...imp.names] : undefined,
+                line: imp.line,
+                isTypeOnly: imp.isTypeOnly,
+              });
+            }
           }
         } else {
           addUnresolvedImport(sourcePath, imp.specifier, imp.line);
@@ -77,12 +96,31 @@ export function buildDependencyGraph(
           });
         }
         const edgeId = `edge:${sourceNodeId}->${pkgId}`;
-        edgesMap.set(edgeId, {
-          id: edgeId,
-          source: sourceNodeId,
-          target: pkgId,
-          type: "imports",
-        });
+        const existingEdge = edgesMap.get(edgeId);
+        if (existingEdge) {
+          if (imp.names.length > 0) {
+            const combined = new Set([...(existingEdge.importedSymbols || []), ...imp.names]);
+            existingEdge.importedSymbols = Array.from(combined);
+          }
+          if (!existingEdge.line || (imp.line && imp.line < existingEdge.line)) {
+            existingEdge.line = imp.line;
+            existingEdge.specifier = imp.specifier;
+          }
+          if (!imp.isTypeOnly) {
+            existingEdge.isTypeOnly = false;
+          }
+        } else {
+          edgesMap.set(edgeId, {
+            id: edgeId,
+            source: sourceNodeId,
+            target: pkgId,
+            type: "imports",
+            specifier: imp.specifier,
+            importedSymbols: imp.names.length > 0 ? [...imp.names] : undefined,
+            line: imp.line,
+            isTypeOnly: imp.isTypeOnly,
+          });
+        }
       } else {
         addUnresolvedImport(sourcePath, imp.specifier, imp.line);
       }

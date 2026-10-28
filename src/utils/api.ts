@@ -7,6 +7,7 @@ import type {
   GraphData,
   ModelOption,
   SearchResult,
+  TraceFlowResult,
 } from "@/types";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
@@ -82,12 +83,7 @@ export async function fetchTraceFlow(
   repositoryId: string,
   startNodeId: string,
   endNodeId: string
-): Promise<{
-  found: boolean;
-  nodePath: string[];
-  edgePath: string[];
-  readableSteps: string[];
-}> {
+): Promise<TraceFlowResult> {
   const res = await fetch(`${API_BASE}/api/trace`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

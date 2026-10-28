@@ -1,9 +1,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GraphData } from "@/types";
+import { GraphData, TraceFlowResult } from "@/types";
 import { fetchTraceFlow } from "@/utils/api";
-import { X, GitFork, ArrowRight, CheckCircle, AlertCircle, Compass } from "lucide-react";
+import {
+  X,
+  GitFork,
+  ArrowRight,
+  CheckCircle,
+  AlertCircle,
+  Compass,
+  RefreshCw,
+} from "lucide-react";
 
 interface TraceFlowModalProps {
   graphData: GraphData;
@@ -24,12 +32,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
   const [endId, setEndId] = useState<string>(initialEndNodeId || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [traceResult, setTraceResult] = useState<{
-    found: boolean;
-    nodePath: string[];
-    edgePath: string[];
-    readableSteps: string[];
-  } | null>(null);
+  const [traceResult, setTraceResult] = useState<TraceFlowResult | null>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -70,12 +73,15 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
     }
   }, [graphData.nodes]);
 
-  const handleCompute = async () => {
-    if (!startId || !endId) return;
+  const handleCompute = async (overrideStart?: string, overrideEnd?: string) => {
+    const sId = overrideStart || startId;
+    const eId = overrideEnd || endId;
+    if (!sId || !eId) return;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchTraceFlow(graphData.repository.id, startId, endId);
+      const res = await fetchTraceFlow(graphData.repository.id, sId, eId);
       setTraceResult(res);
       if (res.found) {
         onApplyTrace(res.nodePath, res.edgePath);
@@ -87,12 +93,23 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
     }
   };
 
+  const handleSwap = () => {
+    const newStart = endId;
+    const newEnd = startId;
+    setStartId(newStart);
+    setEndId(newEnd);
+    if (newStart && newEnd) {
+      handleCompute(newStart, newEnd);
+    }
+  };
+
   const handleSetGoldenDemo = () => {
     const loginNode = graphData.nodes.find((n) => n.path?.includes("Login"));
     const protectedNode = graphData.nodes.find((n) => n.path?.includes("ProtectedRoute"));
     if (loginNode && protectedNode) {
       setStartId(loginNode.id);
       setEndId(protectedNode.id);
+      handleCompute(loginNode.id, protectedNode.id);
     }
   };
 
@@ -133,7 +150,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
         transition={{ type: "spring", damping: 32, stiffness: 420 }}
         style={{
           width: "100%",
-          maxWidth: "620px",
+          maxWidth: "680px",
           maxHeight: "90dvh",
           background: "var(--paper)",
           border: "2px solid var(--border)",
@@ -179,7 +196,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
         {/* Form Body */}
         <div className="touch-pan-y" style={{ padding: "18px", overflowY: "auto", flex: 1 }}>
           {/* Quick preset for golden demo */}
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginBottom: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={handleSetGoldenDemo}
@@ -188,12 +205,22 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
               <Compass size={13} />
               <span>PRESET: LOGIN → PROTECTED ROUTE</span>
             </button>
+            <button
+              type="button"
+              onClick={handleSwap}
+              disabled={!startId || !endId}
+              style={{ fontSize: "11px", padding: "6px 12px", height: "36px", minHeight: "36px", boxSizing: "border-box" }}
+              title="Swap start and end nodes"
+            >
+              <RefreshCw size={13} />
+              <span>SWAP DIRECTION</span>
+            </button>
           </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
               gap: "14px",
               marginBottom: "18px",
             }}
@@ -253,7 +280,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
 
           <div style={{ marginBottom: "18px" }}>
             <button
-              onClick={handleCompute}
+              onClick={() => handleCompute()}
               className="btn-primary"
               disabled={loading || !startId || !endId}
               style={{ width: "100%", height: "44px", minHeight: "44px", boxSizing: "border-box" }}
@@ -289,6 +316,7 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
                     padding: "16px",
                   }}
                 >
+                  {/* Status & Hop Count Badge */}
                   <div
                     className="font-mono"
                     style={{
@@ -298,53 +326,224 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
                       marginBottom: "12px",
                       display: "flex",
                       alignItems: "center",
+                      justifyContent: "space-between",
                       gap: "6px",
                     }}
                   >
-                    <CheckCircle size={14} style={{ color: "#34C759" }} />
-                    <span>FOUND PATH ({traceResult.readableSteps.length} NODES)</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <CheckCircle size={15} style={{ color: "#34C759" }} />
+                      <span style={{ color: "var(--ink)", fontWeight: 800 }}>
+                        FOUND PATH ({traceResult.readableSteps.length} NODES, {traceResult.hops?.length || 0} HOPS)
+                      </span>
+                    </div>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "6px",
-                      marginBottom: "16px",
-                    }}
-                  >
-                    {traceResult.readableSteps.map((step, idx) => (
+                  {/* High-level Summary Banner */}
+                  {traceResult.summary && (
+                    <div
+                      style={{
+                        background: "var(--paper)",
+                        border: "1px solid var(--border)",
+                        padding: "10px 12px",
+                        fontSize: "12px",
+                        lineHeight: "1.45",
+                        marginBottom: "16px",
+                        color: "var(--ink)",
+                      }}
+                    >
                       <div
-                        key={idx}
                         className="font-mono"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          fontSize: "12px",
-                          padding: "8px 10px",
-                          background:
-                            idx === 0 || idx === traceResult.readableSteps.length - 1
-                              ? "var(--accent)"
-                              : "var(--paper)",
-                          color:
-                            idx === 0 || idx === traceResult.readableSteps.length - 1
-                              ? "#11100F"
-                              : "var(--ink)",
-                          fontWeight: 700,
-                          border: "1px solid var(--border)",
+                          fontSize: "10px",
+                          fontWeight: 800,
+                          color: "var(--muted)",
+                          letterSpacing: "0.05em",
+                          marginBottom: "4px",
                         }}
                       >
-                        <span style={{ opacity: 0.6 }}>#{idx + 1}</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {step}
-                        </span>
-                        {idx < traceResult.readableSteps.length - 1 && (
-                          <ArrowRight size={13} style={{ marginLeft: "auto", opacity: 0.5, flexShrink: 0 }} />
-                        )}
+                        TRACE SUMMARY:
                       </div>
-                    ))}
-                  </div>
+                      <div className="font-mono" style={{ fontSize: "11px", color: "var(--ink)" }}>
+                        {traceResult.summary}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detailed Hop-by-Hop Breakdown (WHAT & WHERE) */}
+                  {traceResult.hops && traceResult.hops.length > 0 && (
+                    <div style={{ marginBottom: "16px" }}>
+                      <div
+                        className="font-mono"
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 800,
+                          color: "var(--muted)",
+                          marginBottom: "8px",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        STEP-BY-STEP DEPENDENCY CHAIN:
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {traceResult.hops.map((hop, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              border: "1px solid var(--border)",
+                              background: "var(--paper)",
+                              padding: "12px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                            }}
+                          >
+                            {/* Hop header: number, transition, line badge */}
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: "8px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span
+                                  className="font-mono"
+                                  style={{
+                                    fontSize: "10px",
+                                    fontWeight: 800,
+                                    background: "var(--accent)",
+                                    color: "#111",
+                                    padding: "2px 6px",
+                                  }}
+                                >
+                                  HOP #{idx + 1}
+                                </span>
+                                <span className="font-mono" style={{ fontSize: "12px", fontWeight: 700 }}>
+                                  {hop.fromLabel}{" "}
+                                  <ArrowRight size={12} style={{ display: "inline", verticalAlign: "middle", margin: "0 2px" }} />{" "}
+                                  {hop.toLabel}
+                                </span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                {hop.line && (
+                                  <span
+                                    className="font-mono"
+                                    style={{
+                                      fontSize: "10px",
+                                      fontWeight: 800,
+                                      color: "#0066CC",
+                                      background: "rgba(0, 102, 204, 0.1)",
+                                      padding: "2px 6px",
+                                      border: "1px solid rgba(0, 102, 204, 0.25)",
+                                    }}
+                                  >
+                                    Line {hop.line}
+                                  </span>
+                                )}
+                                {hop.isTypeOnly && (
+                                  <span
+                                    className="font-mono"
+                                    style={{
+                                      fontSize: "10px",
+                                      fontWeight: 700,
+                                      color: "var(--muted)",
+                                      background: "var(--white)",
+                                      padding: "2px 6px",
+                                      border: "1px solid var(--border)",
+                                    }}
+                                  >
+                                    type-only
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* WHERE: exact file path */}
+                            <div
+                              className="font-mono"
+                              style={{
+                                fontSize: "11px",
+                                color: "var(--muted)",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              <div>
+                                <span style={{ opacity: 0.7 }}>From: </span>
+                                <span style={{ color: "var(--ink)", fontWeight: 600 }}>{hop.fromPath || hop.fromLabel}</span>
+                              </div>
+                              <div>
+                                <span style={{ opacity: 0.7 }}>To: </span>
+                                <span style={{ color: "var(--ink)", fontWeight: 600 }}>{hop.toPath || hop.specifier || hop.toLabel}</span>
+                              </div>
+                            </div>
+
+                            {/* WHAT: imported symbols */}
+                            {hop.importedSymbols && hop.importedSymbols.length > 0 && (
+                              <div>
+                                <div
+                                  className="font-mono"
+                                  style={{ fontSize: "10px", fontWeight: 700, color: "var(--muted)", marginBottom: "4px" }}
+                                >
+                                  IMPORTED SYMBOLS:
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                                  {hop.importedSymbols.map((sym, sIdx) => (
+                                    <span
+                                      key={sIdx}
+                                      className="font-mono"
+                                      style={{
+                                        fontSize: "11px",
+                                        fontWeight: 700,
+                                        background: "var(--white)",
+                                        border: "1px solid var(--border)",
+                                        padding: "1px 6px",
+                                        color: "var(--ink)",
+                                      }}
+                                    >
+                                      {sym}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Code snippet showing the exact statement */}
+                            {hop.codeSnippet && (
+                              <div>
+                                <div
+                                  className="font-mono"
+                                  style={{ fontSize: "10px", fontWeight: 700, color: "var(--muted)", marginBottom: "4px" }}
+                                >
+                                  CODE STATEMENT (WHERE):
+                                </div>
+                                <pre
+                                  className="font-mono"
+                                  style={{
+                                    margin: 0,
+                                    padding: "8px 10px",
+                                    background: "#1E1E1E",
+                                    color: "#D4D4D4",
+                                    fontSize: "11px",
+                                    overflowX: "auto",
+                                    border: "1px solid #333",
+                                    lineHeight: "1.4",
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-all",
+                                  }}
+                                >
+                                  <code>{hop.codeSnippet}</code>
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={() => {
@@ -371,11 +570,32 @@ export const TraceFlowModal: React.FC<TraceFlowModalProps> = ({
                     className="font-mono"
                     style={{ fontSize: "12px", fontWeight: 700, color: "#FF9500" }}
                   >
-                    NO DEPENDENCY PATH FOUND
+                    NO FORWARD DEPENDENCY PATH FOUND
                   </div>
-                  <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px" }}>
-                    There is no direct import chain connecting these two files.
+                  <div style={{ fontSize: "12px", color: "var(--ink)", marginTop: "6px" }}>
+                    {traceResult.summary || "There is no direct or indirect import chain connecting these two files."}
                   </div>
+
+                  {traceResult.reverseFound && (
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "10px",
+                        background: "var(--white)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={handleSwap}
+                        className="btn-primary"
+                        style={{ width: "100%", minHeight: "38px", fontSize: "11px" }}
+                      >
+                        <RefreshCw size={13} />
+                        <span>SWAP DIRECTION & TRACE REVERSE FLOW</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
